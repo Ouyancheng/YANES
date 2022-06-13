@@ -15,15 +15,16 @@ set(PROJECT_INCLUDE_DIRS
 set(PROJECT_C_FILES
     src/cpu_opcodes.c
     src/cpu.c
+    src/sdk.c
 )
 add_executable(${TARGET} ${PROJECT_C_FILES} )
 target_include_directories(${TARGET} PUBLIC PROJECT_INCLUDE_DIRS)
 
 target_link_libraries(${TARGET} ${SDL2_LIBRARIES})
 
-include(CheckIPOSupported)
 
 if (USE_LTO)
+    include(CheckIPOSupported)
     check_ipo_supported(RESULT ipo_result OUTPUT ipo_output)
     if(ipo_result)
         set_property(TARGET ${TARGET} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
