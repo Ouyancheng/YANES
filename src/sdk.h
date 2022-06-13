@@ -4,11 +4,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdarg.h>
-
+#include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 
-
-
+int panic_at(const char *file, int line, const char *function, const char *format, ...); 
+#define panic(...) panic_at(__FILE__, __LINE__, __func__, __VA_ARGS__)
 

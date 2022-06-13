@@ -28,8 +28,11 @@ void cpu_copy(struct nescpu *to_cpu, const struct nescpu *cpu);
 void cpu_reset(struct nescpu *cpu); 
 void cpu_run(struct nescpu *cpu, void(*callback)(struct nescpu *c)); 
 
+uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr); 
+void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value); 
 
-
+uint16_t cpu_read16(struct nescpu *cpu, uint16_t addr); 
+void cpu_write16(struct nescpu *cpu, uint16_t addr, uint16_t value); 
 
 
 
