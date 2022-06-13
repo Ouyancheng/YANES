@@ -196,19 +196,18 @@ void cpu_init(struct nescpu *cpu) {
     cpu->sp = CPU_POWERUP_SP; 
     // 0b0011_0100 or 0x34
     // cpu->p = (uint8_t)cpu_flag_ignored | (uint8_t)cpu_flag_break | (uint8_t)cpu_flag_interrupt_disable; 
-    cpu->flag_C = 0;
-    cpu->flag_Z = 0; 
-    cpu->flag_I = 1; 
-    cpu->flag_D = 0; 
-    cpu->flag_V = 0; 
-    cpu->flag_N = 0; 
+    set_flag_carry(cpu, 0); 
+    set_flag_zero(cpu, 0); 
+    set_flag_IRQ(cpu, 1); 
+    set_flag_decimal(cpu, 0); 
+    set_flag_overflow(cpu, 0); 
+    set_flag_negative(cpu, 0);
     cpu->pc = 0; // ? 
 }
 /// https://www.nesdev.org/wiki/CPU_power_up_state 
 void cpu_reset(struct nescpu *cpu) {
     cpu->sp -= 3; 
-    // cpu->p |= (uint8_t)cpu_flag_interrupt_disable; 
-    cpu->flag_I = 1; 
+    set_flag_IRQ(cpu, 1); 
     cpu->pc = cpu_read16(cpu, CPU_RESET_VECTOR); 
 }
 
