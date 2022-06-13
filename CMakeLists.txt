@@ -1,11 +1,11 @@
-cmake_minimum_required(VERION 3.10)
-project(yanes)
+cmake_minimum_required(VERSION 3.10)
+project(Yanes)
 include_guard(GLOBAL)
 
 find_package(SDL2 REQUIRED)
 enable_language(C ASM CXX)
 
-set(TARGET yanes)
+set(TARGET Yanes)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(PROJECT_INCLUDE_DIRS
@@ -15,6 +15,7 @@ set(PROJECT_INCLUDE_DIRS
 set(PROJECT_C_FILES
     src/cpu_opcodes.c
     src/cpu.c
+    src/main.c
     src/sdk.c
 )
 add_executable(${TARGET} ${PROJECT_C_FILES} )

@@ -140,8 +140,12 @@ internal_function void execute_type1_ALU_instruction(struct nescpu *cpu, const s
             break; 
     }
 }
-internal_function void execute_type2_RMW_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb); 
-internal_function void execute_type0_control_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb); 
+internal_function void execute_type2_RMW_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
+    panic("TODO\n"); 
+}
+internal_function void execute_type0_control_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
+    panic("TODO\n"); 
+}
 internal_function void execute_type3_unofficial_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
     panic("TODO: opcode aaa=%x bbb=%x cc=11 is an unofficial opcode\n", aaa, bbb); 
 }
@@ -209,6 +213,23 @@ void cpu_reset(struct nescpu *cpu) {
 }
 
 
+uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
+    panic("TODO"); 
+    return 0;
+}
+void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value) {
+    panic("TODO"); 
+}
 
+uint16_t cpu_read16(struct nescpu *cpu, uint16_t addr) {
+    return (
+        ((uint16_t)cpu_read8(cpu, addr)) | 
+        (((uint16_t)cpu_read8(cpu, addr+1)) << 8)
+    );
+}
+void cpu_write16(struct nescpu *cpu, uint16_t addr, uint16_t value) {
+    cpu_write8(cpu, addr,   (uint8_t)(value & 0xFF));
+    cpu_write8(cpu, addr+1, (uint8_t)(value >> 8)); 
+}
 
 
