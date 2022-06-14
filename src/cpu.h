@@ -50,6 +50,8 @@ void cpu_run(struct nescpu *cpu, void(*callback)(struct nescpu *c));
 /// in C++, purely define the inline functions in the header file is enough
 /// as long as the definitions are identical in different compilation units
 /// and the linker will "randomly" pick one to link
+/// NOTE: in C, the static variables defined within an inlined function
+/// are different between the inline definition and the external linkage
 
 /// reads a byte from the address addr 
 inline uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
