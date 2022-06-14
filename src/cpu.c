@@ -81,6 +81,87 @@ internal_function uint8_t get_flags_to_byte(struct nescpu *cpu, bool flag_brk) {
         ((uint8_t)get_flag_negative(cpu) << 7)
     ); 
 }
+internal_function void update_zero_negative_flags(struct nescpu *cpu, uint8_t according_to_value) {
+    set_flag_zero(cpu, according_to_value == 0); 
+    set_flag_negative(cpu, (according_to_value >> 7)); 
+}
+internal_function bool check_page_crossed(uint16_t base, uint16_t target) {
+    return (base & UINT16_C(0xFF00)) != (target & UINT16_C(0xFF00)); 
+}
+internal_function uint16_t compute_address(struct nescpu *cpu, enum addressmode addrmode, uint16_t ptr, bool *page_crossed) {
+    bool address_page_crossed = false; 
+    uint16_t addr = 0; 
+    switch (addrmode) {
+        case addressmode_accumulator:
+        case addressmode_implicit: 
+            break;
+        case addressmode_absolute: 
+            addr = cpu_read16(cpu, ptr); 
+            break;
+        case addressmode_zeropage: 
+            addr = (uint16_t)cpu_read8(cpu, ptr); 
+            break;
+        case addressmode_zeropage_x: 
+            addr = (uint16_t)((cpu_read8(cpu, ptr) + cpu->x) & 0xFF);
+            break;
+        case addressmode_zeropage_y: 
+            addr = (uint16_t)((cpu_read8(cpu, ptr) + cpu->y) & 0xFF);
+            break;
+        case addressmode_absolute_x: {
+            uint16_t base = cpu_read16(cpu, ptr);
+            addr = base + (uint16_t)cpu->x; 
+            address_page_crossed = check_page_crossed(base, addr); 
+            break;
+        }
+        case addressmode_absolute_y: {
+            uint16_t base = cpu_read16(cpu, ptr);
+            addr = base + (uint16_t)cpu->y; 
+            address_page_crossed = check_page_crossed(base, addr); 
+            break;
+        }
+        case addressmode_relative: {
+            int8_t offset = cpu_read8(cpu, ptr); 
+            addr = cpu->pc + 1 + (uint16_t)((int16_t)offset); // sign extend
+            address_page_crossed = check_page_crossed(cpu->pc + 1, addr);
+            break; 
+        }
+        case addressmode_immediate: 
+            addr = ptr;
+            break; 
+        case addressmode_indirect: 
+            addr = cpu_read16(cpu, cpu_read16(cpu, ptr)); 
+            break;
+        case addressmode_indirect_x: {
+            uint8_t base = cpu_read8(cpu, ptr); 
+            base += cpu->x;
+            addr = cpu_read16(cpu, (uint16_t)base); 
+            break;
+        }
+        case addressmode_indirect_y: {
+            uint16_t base = cpu_read16(cpu, (uint16_t)cpu_read8(cpu, ptr)); 
+            addr = base + cpu->y; 
+            address_page_crossed = check_page_crossed(base, addr); 
+            break;
+        }
+        default:
+            panic("invalid addressmode %u\n", (unsigned)addrmode); 
+            break;
+    }
+    (*page_crossed) = address_page_crossed; 
+    return addr; 
+}
+internal_function void add_to_A(struct nescpu *cpu, uint8_t value) {
+    uint16_t sum = (uint16_t)cpu->a + (uint16_t)value; 
+    sum += get_flag_carry(cpu); 
+    set_flag_carry(cpu, sum > UINT16_C(0xFF)); 
+    uint8_t result = (uint8_t)sum; 
+    set_flag_overflow(cpu, ((value ^ result) & (result ^ cpu->a) & 0x80) != 0);
+    cpu->a = result;
+    update_zero_negative_flags(result); 
+}
+internal_function void subtract_from_A(struct nescpu *cpu, uint8_t value) {
+    add_to_A(cpu, (uint8_t)((-(int8_t)value) - 1)); 
+}
 struct bbb_table_entry {
     enum addressmode mode; 
     unsigned length; 
@@ -107,50 +188,66 @@ const struct bbb_table_entry type2_bbb_lookup_table[8] = {
     [0b111] = {addressmode_absolute_x, 3, 7}, 
 };
 
-internal_function void execute_type1_ALU_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
+internal_function unsigned execute_type1_ALU_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
     // assert(0 <= aaa && aaa < 8); 
     // assert(0 <= bbb && bbb < 8); 
+    bool pagecrossed = false;
+    const struct bbb_table_entry *bbb_entry = &(type1_bbb_lookup_table[bbb]);
+    enum addressmode mode = bbb_entry->mode;
+    unsigned base_cycles = bbb_entry->base_cycle;  
+    uint16_t address = compute_address(cpu, mode, cpu->pc, &pagecrossed);
     switch (aaa) {
-        case 0b000: 
-            // ORA
+        case 0b000: // ORA
+            cpu->a |= cpu_read8(cpu, address); 
+            update_zero_negative_flags(cpu, cpu->a); 
             break;
-        case 0b001: 
-            // AND
+        case 0b001: // AND
+            cpu->a &= cpu_read8(cpu, address);
+            update_zero_negative_flags(cpu, cpu->a); 
             break;
-        case 0b010: 
-            // EOR 
+        case 0b010: // EOR 
+            cpu->a ^= cpu_read8(cpu, address); 
+            update_zero_negative_flags(cpu, cpu->a); 
             break;
-        case 0b011: 
-            // ADC 
+        case 0b011: // ADC 
+            add_to_A(cpu, cpu_read8(cpu, address)); 
             break;
-        case 0b100: 
-            // STA 
+        case 0b100: // STA 
+            if (mode != addressmode_immediate) {
+                cpu_write8(cpu, address, cpu->a); 
+                pagecrossed = true;
+            }
             break;
-        case 0b101: 
-            // LDA
+        case 0b101: // LDA
+            cpu->a = cpu_read8(cpu, address); 
+            update_zero_negative_flags(cpu, cpu->a); 
             break;
-        case 0b110: 
-            // CMP
+        case 0b110: { // CMP
+            uint8_t data = cpu_read8(cpu, address); 
+            set_flag_carry(cpu, data <= cpu->a); 
+            update_zero_negative_flags(cpu, cpu->a - data); 
             break;
-        case 0b111: 
-            // SBC 
+        }
+        case 0b111: // SBC 
+            subtract_from_A(cpu, cpu_read8(cpu, address)); 
             break; 
         default: 
             panic("invalid aaa %u\n", aaa); 
             break; 
     }
+    return base_cycles + pagecrossed; 
 }
-internal_function void execute_type2_RMW_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
+internal_function unsigned execute_type2_RMW_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
     assert(0 <= aaa && aaa < 8); 
     assert(0 <= bbb && bbb < 8); 
     panic("TODO\n"); 
 }
-internal_function void execute_type0_control_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
+internal_function unsigned execute_type0_control_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
     assert(0 <= aaa && aaa < 8); 
     assert(0 <= bbb && bbb < 8); 
     panic("TODO\n"); 
 }
-internal_function void execute_type3_unofficial_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
+internal_function unsigned execute_type3_unofficial_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
     assert(0 <= aaa && aaa < 8); 
     assert(0 <= bbb && bbb < 8); 
     panic("TODO: opcode aaa=%x bbb=%x cc=11 is an unofficial opcode\n", aaa, bbb); 
