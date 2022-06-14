@@ -252,7 +252,7 @@ internal_function unsigned execute_type2_RMW_instruction(struct nescpu *cpu, uns
             cpu->sp = cpu->x; 
         } else if (aaa == 0b101) { // TSX
             cpu->x = cpu->sp;
-            update_zero_negative_flags(cpu->x);
+            update_zero_negative_flags(cpu, cpu->x);
         }
         cpu->pc += (bbb_entry->length - 1); 
         return bbb_entry->base_cycle; 
@@ -293,11 +293,13 @@ internal_function unsigned execute_type2_RMW_instruction(struct nescpu *cpu, uns
         }
         case 0b100: // STX
             if (bbb == 0b000) break;
-            else if (bbb == 0b101) {
-                mode = addressmode_zeropage_y;
-                length = 2;
-                base_cycles = 4;
-            }
+            // else if (bbb == 0b101) {
+            //     mode = addressmode_zeropage_y; 
+            //     base_cycles -= 2;
+            // }
+            // else if (bbb == 0b001 || bbb == 0b011) {
+            //     base_cycles -= 2;
+            // }
             /// TODO: 
             break;
         case 0b101: // LDX
@@ -305,16 +307,16 @@ internal_function unsigned execute_type2_RMW_instruction(struct nescpu *cpu, uns
             break;
         case 0b110: {// DEC
             if (bbb == 0b000) break;
-            else if (bbb == 0b011) {
+            else if (bbb == 0b011) { // DEX
                 cpu->x -= 1; 
-                update_zero_negative_flags(cpu->x);
+                update_zero_negative_flags(cpu, cpu->x);
                 break;
             }
             uint16_t address = compute_address(cpu, mode, cpu->pc, &pagecrossed); 
             uint8_t value = cpu_read8(cpu, address); 
             value -= 1;
             cpu_write8(cpu, address, value); 
-            update_zero_negative_flags(value); 
+            update_zero_negative_flags(cpu, value); 
             break;
         }
         case 0b111: { // INC
@@ -323,7 +325,7 @@ internal_function unsigned execute_type2_RMW_instruction(struct nescpu *cpu, uns
             uint8_t value = cpu_read8(cpu, address); 
             value += 1;
             cpu_write8(cpu, address, value); 
-            update_zero_negative_flags(value); 
+            update_zero_negative_flags(cpu, value); 
             break;
         }
         default: 
