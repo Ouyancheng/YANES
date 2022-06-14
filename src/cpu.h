@@ -46,7 +46,10 @@ void cpu_run(struct nescpu *cpu, void(*callback)(struct nescpu *c));
 /// then extern the inline functions in the C files! 
 /// because we need to provide external linkage for the inline functions 
 /// as the compiler may not choose to inline them 
-/// this is not the case in C++ (!!!)
+/// this is not the case in C++ (!!!) 
+/// in C++, purely define the inline functions in the header file is enough
+/// as long as the definitions are identical in different compilation units
+/// and the linker will "randomly" pick one to link
 
 /// reads a byte from the address addr 
 inline uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
