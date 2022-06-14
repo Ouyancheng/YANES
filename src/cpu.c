@@ -157,7 +157,7 @@ internal_function void add_to_A(struct nescpu *cpu, uint8_t value) {
     uint8_t result = (uint8_t)sum; 
     set_flag_overflow(cpu, ((value ^ result) & (result ^ cpu->a) & 0x80) != 0);
     cpu->a = result;
-    update_zero_negative_flags(result); 
+    update_zero_negative_flags(cpu, result); 
 }
 internal_function void subtract_from_A(struct nescpu *cpu, uint8_t value) {
     add_to_A(cpu, (uint8_t)((-(int8_t)value) - 1)); 
@@ -177,20 +177,9 @@ const struct bbb_table_entry type1_bbb_lookup_table[8] = {
     [0b110] = {addressmode_absolute_y, 3, 4}, // len=3, cyc=4+1 (STA: always+1, others+1 if page crossed)
     [0b111] = {addressmode_absolute_x, 3, 4}, // len=3, cyc=4+1 (STA: always+1, others+1 if page crossed)
 };
-const struct bbb_table_entry type2_bbb_lookup_table[8] = {
-    [0b000] = {addressmode_immediate,  2, 2}, 
-    [0b001] = {addressmode_zeropage,   2, 5},
-    [0b010] = {addressmode_accumulator,1, 2}, 
-    [0b011] = {addressmode_absolute,   3, 6}, 
-    [0b100] = {addressmode_implicit,   1, 2}, // unofficial, the STP column, halts the cpu, reset required
-    [0b101] = {addressmode_zeropage_x, 2, 6}, 
-    [0b110] = {addressmode_implicit,   1, 2}, // unofficial NOPs, except for TXS and TSX 
-    [0b111] = {addressmode_absolute_x, 3, 7}, 
-};
-
 internal_function unsigned execute_type1_ALU_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
-    // assert(0 <= aaa && aaa < 8); 
-    // assert(0 <= bbb && bbb < 8); 
+    assert(0 <= aaa && aaa < 8); 
+    assert(0 <= bbb && bbb < 8); 
     bool pagecrossed = false;
     const struct bbb_table_entry *bbb_entry = &(type1_bbb_lookup_table[bbb]);
     enum addressmode mode = bbb_entry->mode;
@@ -235,22 +224,106 @@ internal_function unsigned execute_type1_ALU_instruction(struct nescpu *cpu, con
             panic("invalid aaa %u\n", aaa); 
             break; 
     }
+    cpu->pc += (bbb_entry->length - 1);
     return base_cycles + pagecrossed; 
 }
+const struct bbb_table_entry type2_bbb_lookup_table[8] = {
+    [0b000] = {addressmode_immediate,  2, 2}, 
+    [0b001] = {addressmode_zeropage,   2, 5},
+    [0b010] = {addressmode_accumulator,1, 2}, 
+    [0b011] = {addressmode_absolute,   3, 6}, 
+    [0b100] = {addressmode_implicit,   1, 2}, // unofficial, the STP column, halts the cpu, reset required
+    [0b101] = {addressmode_zeropage_x, 2, 6}, 
+    [0b110] = {addressmode_implicit,   1, 2}, // unofficial NOPs, except for TXS and TSX 
+    [0b111] = {addressmode_absolute_x, 3, 7}, 
+};
 internal_function unsigned execute_type2_RMW_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
     assert(0 <= aaa && aaa < 8); 
     assert(0 <= bbb && bbb < 8); 
-    panic("TODO\n"); 
+    bool pagecrossed = false;
+    const struct bbb_table_entry *bbb_entry = &(type2_bbb_lookup_table[bbb]); 
+    if (bbb == 0b100) {
+        // panic("opcode aaa=%x bbb=%x cc=10 falls into halting condition\n", aaa, bbb); 
+        cpu->pc += (bbb_entry->length - 1); 
+        return bbb_entry->base_cycle; 
+    }
+    enum addressmode mode = bbb_entry->mode; 
+    uint16_t address = compute_address(cpu, bbb_entry->mode, cpu->pc, &pagecrossed); 
+    switch (aaa) {
+        case 0b000: { // ASL
+            uint8_t value = (mode == addressmode_accumulator) ? cpu->a : cpu_read8(cpu, address); 
+            set_flag_carry(cpu, value >> 7); 
+            value <<= 1;
+            if (mode == addressmode_accumulator) {
+                cpu->a = value; 
+            } else {
+                cpu_write8(cpu, address, value); 
+            }
+            update_zero_negative_flags(cpu, value); 
+            break;
+        }
+        case 0b001: { // ROL
+            uint8_t value = (mode == addressmode_accumulator) ? cpu->a : cpu_read8(cpu, address); 
+            uint8_t prev_carry = get_flag_carry(cpu); 
+            set_flag_carry(cpu, value >> 7); 
+            value = ((value << 1) | prev_carry);
+            if (mode == addressmode_accumulator) {
+                cpu->a = value; 
+            } else {
+                cpu_write8(cpu, address, value); 
+            }
+            update_zero_negative_flags(cpu, value); 
+            break;
+        }
+        case 0b010: { // LSR
+            uint8_t value = (mode == addressmode_accumulator) ? cpu->a : cpu_read8(cpu, address); 
+            set_flag_carry(cpu, value & 1); 
+            value >>= 1;
+            if (mode == addressmode_accumulator) {
+                cpu->a = value; 
+            } else {
+                cpu_write8(cpu, address, value); 
+            }
+            update_zero_negative_flags(cpu, value); 
+            break;
+        }
+        case 0b011: { // ROR
+            uint8_t value = (mode == addressmode_accumulator) ? cpu->a : cpu_read8(cpu, address); 
+            uint8_t prev_carry = get_flag_carry(cpu); 
+            set_flag_carry(cpu, value & 1); 
+            value = ((value >> 1) | (prev_carry << 7));
+            if (mode == addressmode_accumulator) {
+                cpu->a = value; 
+            } else {
+                cpu_write8(cpu, address, value); 
+            }
+            update_zero_negative_flags(cpu, value); 
+            break;
+        }
+        case 0b100: // STX
+
+            break;
+        case 0b101: // LDX
+        case 0b110: // DEC
+        case 0b111: // INC
+        default: 
+            panic("invalid aaa %u\n", aaa); 
+            break;
+    }
+    cpu->pc += (bbb_entry->length - 1); 
+    return bbb_entry->base_cycle; 
 }
 internal_function unsigned execute_type0_control_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
     assert(0 <= aaa && aaa < 8); 
     assert(0 <= bbb && bbb < 8); 
     panic("TODO\n"); 
+    return 0;
 }
 internal_function unsigned execute_type3_unofficial_instruction(struct nescpu *cpu, const struct cpu_opcode *opcode_entry, unsigned aaa, unsigned bbb) {
     assert(0 <= aaa && aaa < 8); 
     assert(0 <= bbb && bbb < 8); 
     panic("TODO: opcode aaa=%x bbb=%x cc=11 is an unofficial opcode\n", aaa, bbb); 
+    return 0; 
 }
 
 void cpu_run(struct nescpu *cpu, void(*callback)(struct nescpu *c)) {
