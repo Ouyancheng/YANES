@@ -20,7 +20,7 @@ internal_function bool check_page_crossed(uint16_t base, uint16_t target) {
     return (base & 0xFF00) != (target & 0xFF00); 
 }
 
-uint16_t cpu_compute_address(struct nescpu *cpu, enum addressmode addrmode, uint16_t ptr, bool *is_page_crossed) {
+uint16_t cpu_compute_address(struct nescpu *cpu, uint8_t addrmode, uint16_t ptr, bool *is_page_crossed) {
     bool page_crossed = false; 
     uint16_t addr = 0; 
     switch (addrmode) {

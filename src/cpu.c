@@ -38,7 +38,7 @@ void cpu_init(struct nescpu *cpu) {
 void cpu_reset(struct nescpu *cpu) {
     cpu_init(cpu); // technically speaking this is not quite right, we don't need this
     cpu->sp = CPU_POWERUP_SP; // it seems like it's 0x00 - 3 = 0xFD, not 0xFD - 3... 
-    set_flag(cpu, CPU_FLAG_I, 1); 
+    cpu->p |= CPU_FLAG_I;
     cpu->pc = cpu_read16(cpu, CPU_RESET_VECTOR); 
 }
 

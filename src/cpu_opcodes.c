@@ -26,7 +26,7 @@ const struct cpu_opcode opcode_table[256] = {
     [0x31] = OP(AND, MODE_INY, 2, 5),  // cyc=5+
     // ASL (Arithmetic Shift Left) Affects Flags: N Z C
     // ASL shifts all bits left one position. 0 is shifted into bit 0 and the original bit 7 is shifted into the Carry.
-    [0x0A] = OP(ASL, MODE_ACC, 1, 2),  // ASL A with Accumulator as argument 
+    [0x0A] = OP(ASL, MODE_IMP, 1, 2),  // ASL A with Accumulator as argument // MODE_ACC
     [0x06] = OP(ASL, MODE_ZPG, 2, 5),  
     [0x16] = OP(ASL, MODE_ZPX, 2, 6),  
     [0x0E] = OP(ASL, MODE_ABS, 3, 6),  
@@ -148,7 +148,7 @@ const struct cpu_opcode opcode_table[256] = {
     [0xBC] = OP(LDY, MODE_ABX, 3, 4),  // cyc+1 if page crossed 
     // LSR (Logical Shift Right)
     // Affects Flags: N Z C
-    [0x4A] = OP(LSR, MODE_ACC, 1, 2),  // LSR A 
+    [0x4A] = OP(LSR, MODE_IMP, 1, 2),  // LSR A // MODE_ACC
     [0x46] = OP(LSR, MODE_ZPG, 2, 5),  
     [0x56] = OP(LSR, MODE_ZPX, 2, 6),  
     [0x4E] = OP(LSR, MODE_ABS, 3, 6),  
@@ -177,14 +177,14 @@ const struct cpu_opcode opcode_table[256] = {
     [0xC8] = OP(INY, MODE_IMP, 1, 2),  
     // ROL (ROtate Left)
     // Affects Flags: N Z C
-    [0x2A] = OP(ROL, MODE_ACC, 1, 2),  
+    [0x2A] = OP(ROL, MODE_IMP, 1, 2),  // MODE_ACC
     [0x26] = OP(ROL, MODE_ZPG, 2, 5),  
     [0x36] = OP(ROL, MODE_ZPX, 2, 6),  
     [0x2E] = OP(ROL, MODE_ABS, 3, 6),  
     [0x3E] = OP(ROL, MODE_ABX, 3, 7),  
     // ROR (ROtate Right)
     // Affects Flags: N Z C
-    [0x6A] = OP(ROR, MODE_ACC, 1, 2),  
+    [0x6A] = OP(ROR, MODE_IMP, 1, 2),  // MODE_ACC
     [0x66] = OP(ROR, MODE_ZPG, 2, 5),  
     [0x76] = OP(ROR, MODE_ZPX, 2, 6),  
     [0x6E] = OP(ROR, MODE_ABS, 3, 6),  

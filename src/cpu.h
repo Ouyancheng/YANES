@@ -35,7 +35,7 @@ int cpu_single_step(struct nescpu *cpu);
 void cpu_run(struct nescpu *cpu, void(*callback)(struct nescpu *c)); 
 
 
-uint16_t cpu_compute_address(struct nescpu *cpu, enum addressmode addrmode, uint16_t ptr, bool *is_page_crossed);
+uint16_t cpu_compute_address(struct nescpu *cpu, uint8_t addrmode, uint16_t ptr, bool *is_page_crossed);
 
 
 /// NOTE: the correct way to use inline in C 
