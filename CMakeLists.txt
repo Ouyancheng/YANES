@@ -9,20 +9,22 @@ set(TARGET Yanes)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(PROJECT_INCLUDE_DIRS
-    src
+    ${CMAKE_CURRENT_LIST_DIR}/src
     ${SDL2_INCLUDE_DIRS}
 )
+# message(STATUS "INCLUDE_DIRS=${PROJECT_INCLUDE_DIRS}")
 set(PROJECT_C_FILES
     src/cpu_exec.c
     src/cpu_opcode_nametable.c
     src/cpu.c
     src/main.c
     src/sdk.c
+    src/tests/testsnakegame.c
 )
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 add_executable(${TARGET} ${PROJECT_C_FILES} )
-target_include_directories(${TARGET} PUBLIC PROJECT_INCLUDE_DIRS)
+target_include_directories(${TARGET} PUBLIC ${PROJECT_INCLUDE_DIRS})
 
 target_link_libraries(${TARGET} ${SDL2_LIBRARIES})
 

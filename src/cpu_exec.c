@@ -140,6 +140,7 @@ EXEC(BPL) {
     return branch(cpu, !flag_is_set(cpu, CPU_FLAG_N), addr, page_crossed); 
 }
 EXEC(BRK) {
+    panic("BRK occurred, but not handled\n");
     return 0; 
 }
 EXEC(BVC) {

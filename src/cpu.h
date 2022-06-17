@@ -8,6 +8,8 @@ struct nescpu {
     uint8_t sp; 
     uint8_t p; // note: there's no break flags in the P register (bit 4 and bit 5)
     uint16_t pc; 
+
+    uint8_t cpu_test_memory[65536];
 };
 
 enum cpu_flags {
@@ -51,6 +53,8 @@ uint16_t cpu_compute_address(struct nescpu *cpu, uint8_t addrmode, uint16_t ptr,
 /// NOTE: in C, the static variables defined within an inlined function
 /// are different between the inline definition and the external linkage
 
+
+
 /// non-destructively reads a byte from the address addr 
 inline uint8_t cpu_peek8(struct nescpu *cpu, uint16_t addr) {
     panic("TODO"); 
@@ -59,13 +63,15 @@ inline uint8_t cpu_peek8(struct nescpu *cpu, uint16_t addr) {
 /// reads a byte from the address addr 
 inline uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
     // panic("TODO"); 
-    return 0x02;
+    // return 0x02;
+    return cpu->cpu_test_memory[addr];
 }
 inline void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value) {
-    panic("TODO"); 
+    // panic("TODO"); 
+    cpu->cpu_test_memory[addr] = value;
 }
 
-inline uint16_t cpu_peel16(struct nescpu *cpu, uint16_t addr) {
+inline uint16_t cpu_peek16(struct nescpu *cpu, uint16_t addr) {
     return (
         ((uint16_t)cpu_peek8(cpu, addr)) | 
         (((uint16_t)cpu_peek8(cpu, addr+1)) << 8)

@@ -17,3 +17,12 @@ int panic_at(const char *file, int line, const char *function, const char *forma
 #else 
 #define PACKED 
 #endif 
+
+struct rgb {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+};
+
+

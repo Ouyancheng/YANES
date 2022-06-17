@@ -1,6 +1,7 @@
 #include "cpu.h"
 #include "cpu_instruction.h"
 #include "cpu_addressmode.h"
+void test_snake(void);
 int main(int argc, const char *const argv[]) {
     print_cpu_opcode_nametable(); 
     #define CASE_N(OP) case OP: printf("#define OP_INSTR_0x%02X (%s, %d)\n", OP, INSTR_TO_STR(OP_GETINSTR(OP)), OP_GETCYC(OP)); break;
@@ -15,14 +16,14 @@ int main(int argc, const char *const argv[]) {
         }
         printf("///////////////////////////////////////////////////////////\n");
     }
-    struct nescpu cpu;
-    bool dummy;
-    printf("test compute addr %d\n", cpu_compute_address(&cpu, MODE_IMP, 0, &dummy));
+    // struct nescpu cpu;
+    // bool dummy;
+    // printf("test compute addr %d\n", cpu_compute_address(&cpu, MODE_IMP, 0, &dummy));
     // cpu_init(&cpu);
     // cpu_reset(&cpu);
-    cpu_run(&cpu, NULL);
+    // cpu_run(&cpu, NULL);
     
-    
+    test_snake();
     return 0; 
 }
 
