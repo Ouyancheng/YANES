@@ -2,7 +2,7 @@
 #include "sdk.h"
 #include "cpu_addressmode.h"
 #include "cpu_instruction.h"
-
+#include "cpu_cycles.h"
 
 
 /// the instruction information for an opcode 

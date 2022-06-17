@@ -1,5 +1,5 @@
 #pragma once 
-
+#include "sdk.h"
 enum addressmode {
     MODE_ABS, // addressmode_absolute, 
     MODE_ZPG, // addressmode_zeropage, 
@@ -311,8 +311,9 @@ enum addressmode {
 #define OP_MODE_0xDF MODE_ABX
 #define OP_MODE_0xFF MODE_ABX
 
-#define GETADDR_MODE_IMP(addr, cpu, ptr, page_crossed) 
-#define GETADDR_MODE_ACC(addr, cpu, ptr, page_crossed) 
+
+#define GETADDR_MODE_IMP(addr, cpu, ptr, page_crossed) ((void)0)
+#define GETADDR_MODE_ACC(addr, cpu, ptr, page_crossed) ((void)0)
 #define GETADDR_MODE_IMM(addr, cpu, ptr, page_crossed) do { addr = ptr; } while (0)
 
 #define GETADDR_MODE_ZPG(addr, cpu, ptr, page_crossed) do { addr = (uint16_t)cpu_read8(cpu, ptr); } while (0)
@@ -323,7 +324,7 @@ enum addressmode {
 #define GETADDR_MODE_ABX(addr, cpu, ptr, page_crossed) do {\
     uint16_t base = cpu_read16(cpu, ptr);\
     addr = base + (uint16_t)cpu->x; \
-    page_crossed = check_page_crossed(base, addr); \} while (0)
+    page_crossed = check_page_crossed(base, addr); } while (0)
 #define GETADDR_MODE_ABY(addr, cpu, ptr, page_crossed) do {\
     uint16_t base = cpu_read16(cpu, ptr);\
     addr = base + (uint16_t)cpu->y; \
@@ -332,9 +333,23 @@ enum addressmode {
 #define GETADDR_MODE_REL(addr, cpu, ptr, page_crossed) do {\
     int8_t offset = cpu_read8(cpu, ptr); \
     addr = cpu->pc + 1 + (uint16_t)((int16_t)offset); \
-    page_crossed = check_page_crossed(cpu->pc + 1, addr);}
+    page_crossed = check_page_crossed(cpu->pc + 1, addr);} while (0)
 
-#define GETADDR_MODE_IND(addr, cpu, ptr, page_crossed) do { addr = cpu_read16(cpu, cpu_read16(cpu, ptr)); } while (0)
+// 6502 bug mode with with page boundary:
+// if address $3000 contains $40, $30FF contains $80, and $3100 contains $50,
+// the result of JMP ($30FF) will be a transfer of control to $4080 rather than $5080 as you intended
+// i.e. the 6502 took the low byte of the address from $30FF and the high byte from $3000
+#define GETADDR_MODE_IND(addr, cpu, ptr, page_crossed) do { \
+    uint16_t mem_address = cpu_read16(cpu, ptr); \
+    uint16_t indirect_ref; \
+    if ((mem_address & 0x00FF) == 0x00FF) {\
+        uint16_t lo = (uint16_t)cpu_read8(cpu, mem_address); \
+        uint16_t hi = (uint16_t)cpu_read8(cpu, mem_address & 0xFF00); \
+        indirect_ref = ((hi << 8) | lo); \
+    } else {\
+        indirect_ref = cpu_read16(cpu, mem_address); \
+    }\
+    addr = indirect_ref; } while (0)
 #define GETADDR_MODE_INX(addr, cpu, ptr, page_crossed) do {\
     uint8_t base = cpu_read8(cpu, ptr); \
     base += cpu->x;\
@@ -345,7 +360,7 @@ enum addressmode {
     page_crossed = check_page_crossed(base, addr); } while (0)
 
 #define MACRO_CONCAT(A, B) A##B
-#define OP_GETADDR_S(OPCODE_HEX) GETADDR_##OPCODE_HEX
+#define OP_GETADDR_S(ADDRMODE) GETADDR_##ADDRMODE
 #define OP_GETADDR(...) OP_GETADDR_S(__VA_ARGS__)
 
 #define GETLENGTH_MODE_IMP 1
@@ -367,4 +382,5 @@ enum addressmode {
 // DO NOT CALL, no external linkage is generated 
 inline void cpu_opcode_addrmode_test(void) {
     _Static_assert(OP_GETLENGTH(OP_GETMODE_HEX(0x09)) == 2, "");
+    OP_GETADDR(OP_GETMODE_HEX(0x6A))(addr, cpu, ptr, page_crossed);
 }

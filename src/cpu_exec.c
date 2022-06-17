@@ -24,56 +24,18 @@ uint16_t cpu_compute_address(struct nescpu *cpu, uint8_t addrmode, uint16_t ptr,
     bool page_crossed = false; 
     uint16_t addr = 0; 
     switch (addrmode) {
-        case MODE_IMP: 
-            break;
-        case MODE_ABS: 
-            addr = cpu_read16(cpu, ptr); 
-            break;
-        case MODE_ZPG: 
-            addr = (uint16_t)cpu_read8(cpu, ptr); 
-            break;
-        case MODE_ZPX: 
-            addr = (uint16_t)((cpu_read8(cpu, ptr) + cpu->x) & 0xFF);
-            break;
-        case MODE_ZPY: 
-            addr = (uint16_t)((cpu_read8(cpu, ptr) + cpu->y) & 0xFF);
-            break;
-        case MODE_ABX: {
-            uint16_t base = cpu_read16(cpu, ptr);
-            addr = base + (uint16_t)cpu->x; 
-            page_crossed = check_page_crossed(base, addr); 
-            break;
-        }
-        case MODE_ABY: {
-            uint16_t base = cpu_read16(cpu, ptr);
-            addr = base + (uint16_t)cpu->y; 
-            page_crossed = check_page_crossed(base, addr); 
-            break;
-        }
-        case MODE_REL: {
-            int8_t offset = cpu_read8(cpu, ptr); 
-            addr = cpu->pc + 1 + (uint16_t)((int16_t)offset); // sign extend
-            page_crossed = check_page_crossed(cpu->pc + 1, addr);
-            break; 
-        }
-        case MODE_IMM: 
-            addr = ptr;
-            break; 
-        case MODE_IND: 
-            addr = cpu_read16(cpu, cpu_read16(cpu, ptr)); 
-            break;
-        case MODE_INX: {
-            uint8_t base = cpu_read8(cpu, ptr); 
-            base += cpu->x;
-            addr = cpu_read16(cpu, (uint16_t)base); 
-            break;
-        }
-        case MODE_INY: {
-            uint16_t base = cpu_read16(cpu, (uint16_t)cpu_read8(cpu, ptr)); 
-            addr = base + cpu->y; 
-            page_crossed = check_page_crossed(base, addr); 
-            break;
-        }
+        case MODE_IMP: OP_GETADDR(MODE_IMP)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ABS: OP_GETADDR(MODE_ABS)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ZPG: OP_GETADDR(MODE_ZPG)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ZPX: OP_GETADDR(MODE_ZPX)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ZPY: OP_GETADDR(MODE_ZPY)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ABX: OP_GETADDR(MODE_ABX)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ABY: OP_GETADDR(MODE_ABY)(addr, cpu, ptr, page_crossed); break;
+        case MODE_REL: OP_GETADDR(MODE_REL)(addr, cpu, ptr, page_crossed); break;
+        case MODE_IMM: OP_GETADDR(MODE_IMM)(addr, cpu, ptr, page_crossed); break;
+        case MODE_IND: OP_GETADDR(MODE_IND)(addr, cpu, ptr, page_crossed); break;
+        case MODE_INX: OP_GETADDR(MODE_INX)(addr, cpu, ptr, page_crossed); break;
+        case MODE_INY: OP_GETADDR(MODE_INY)(addr, cpu, ptr, page_crossed); break;
         default:
             panic("invalid addressmode %u\n", (unsigned)addrmode); 
             break;
@@ -96,16 +58,552 @@ internal_function void subtract_from_A(struct nescpu *cpu, uint8_t value) {
     add_to_A(cpu, (uint8_t)((-(int8_t)value) - 1)); 
 }
 
+internal_function unsigned branch(struct nescpu *cpu, bool cond, uint16_t taken_addr, bool page_crossed) {
+    unsigned total_cycles = 0;
+    if (cond) {
+        total_cycles += 1;
+        cpu->pc = taken_addr;
+        total_cycles += page_crossed;
+    }
+}
+internal_function unsigned compare(struct nescpu *cpu, uint8_t compare_with, uint16_t addr, bool page_crossed) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    set_flag(cpu, CPU_FLAG_C, data <= compare_with); 
+    update_zero_negative_flags(cpu, compare_with - data); 
+    return page_crossed;
+}
+
+internal_function uint8_t pop_u8(struct nescpu *cpu) {
+    cpu->sp += 1; 
+    return cpu_read8(cpu, CPU_STACK_OFFSET + (uint16_t)(cpu->sp)); 
+}
+internal_function void push_u8(struct nescpu *cpu, uint8_t val) {
+    cpu_write8(cpu, CPU_STACK_OFFSET + (uint16_t)(cpu->sp), val); 
+    cpu->sp -= 1; 
+}
+internal_function void push_u16(struct nescpu *cpu, uint16_t val) {
+    push_u8(cpu, (uint8_t)(val >> 8));
+    push_u8(cpu, (uint8_t)(val & 0xff)); 
+}
+internal_function uint16_t pop_u16(struct nescpu *cpu) {
+    uint16_t lo = (uint16_t)pop_u8(cpu); 
+    uint16_t hi = (uint16_t)pop_u8(cpu); 
+    return ((hi << 8) | lo);
+}
+
+typedef struct nescpu cpu_t;
+#define EXEC(INSTR) internal_function unsigned exec_##INSTR(cpu_t *cpu, uint16_t addr, bool page_crossed)
+EXEC(ADC) {
+    add_to_A(cpu, cpu_read8(cpu, addr)); 
+    return 0;
+}
+EXEC(AND) {
+    cpu->a &= cpu_read8(cpu, addr);
+    update_zero_negative_flags(cpu, cpu->a); 
+    return 0;
+}
+EXEC(ASL) {
+    uint8_t value = cpu_read8(cpu, addr); 
+    set_flag(cpu, CPU_FLAG_C, value >> 7);
+    value <<= 1; 
+    cpu_write8(cpu, addr, value);
+    update_zero_negative_flags(cpu, value); 
+    return 0;
+}
+EXEC(BCC) {
+    return branch(cpu, !flag_is_set(cpu, CPU_FLAG_C), addr, page_crossed);
+}
+EXEC(BCS) {
+    return branch(cpu, flag_is_set(cpu, CPU_FLAG_C), addr, page_crossed);
+}
+EXEC(BEQ) {
+    return branch(cpu, flag_is_set(cpu, CPU_FLAG_Z), addr, page_crossed);
+}
+EXEC(BIT) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    uint8_t and = cpu->a & data; 
+    set_flag(cpu, CPU_FLAG_Z, !and);
+    set_flag(cpu, CPU_FLAG_N, data & UINT8_C(0b10000000));
+    set_flag(cpu, CPU_FLAG_V, data & UINT8_C(0b01000000));
+    return 0;
+}
+EXEC(BMI) {
+    return branch(cpu, flag_is_set(cpu, CPU_FLAG_N), addr, page_crossed);
+}
+EXEC(BNE) {
+    return branch(cpu, !flag_is_set(cpu, CPU_FLAG_Z), addr, page_crossed);
+}
+EXEC(BPL) {
+    return branch(cpu, !flag_is_set(cpu, CPU_FLAG_N), addr, page_crossed); 
+}
+EXEC(BRK) {
+    return 0; 
+}
+EXEC(BVC) {
+    return branch(cpu, !flag_is_set(cpu, CPU_FLAG_V), addr, page_crossed);
+}
+EXEC(BVS) {
+    return branch(cpu, flag_is_set(cpu, CPU_FLAG_V), addr, page_crossed); 
+}
+EXEC(CLC) {
+    set_flag(cpu, CPU_FLAG_C, false); 
+    return 0;
+}
+EXEC(CLD) {
+    set_flag(cpu, CPU_FLAG_D, false);
+    return 0;
+}
+EXEC(CLI) {
+    set_flag(cpu, CPU_FLAG_I, false);
+    return 0;
+}
+EXEC(CLV) {
+    set_flag(cpu, CPU_FLAG_V, false);
+    return 0;
+}
+EXEC(CMP) {
+    return compare(cpu, cpu->a, addr, page_crossed); 
+}
+EXEC(CPX) {
+    return compare(cpu, cpu->x, addr, page_crossed); 
+}
+EXEC(CPY) {
+    return compare(cpu, cpu->y, addr, page_crossed); 
+}
+EXEC(DEC) {
+    uint8_t data = cpu_read8(cpu, addr);
+    data -= 1;
+    cpu_write8(cpu, addr, data); 
+    update_zero_negative_flags(cpu, data); 
+    return 0;
+}
+EXEC(DEX) {
+    cpu->x -= 1;
+    update_zero_negative_flags(cpu, cpu->x);
+    return 0;
+}
+EXEC(DEY) {
+    cpu->y -= 1;
+    update_zero_negative_flags(cpu, cpu->y);
+    return 0;
+}
+EXEC(EOR) {
+    uint8_t data = cpu_read8(cpu, addr);
+    cpu->a ^= data;
+    update_zero_negative_flags(cpu, cpu->a); 
+    return page_crossed;
+}
+EXEC(INC) {
+    uint8_t data = cpu_read8(cpu, addr);
+    data += 1;
+    cpu_write8(cpu, addr, data);
+    update_zero_negative_flags(cpu, data);
+    return 0;
+}
+EXEC(INX) {
+    cpu->x += 1;
+    update_zero_negative_flags(cpu, cpu->x);
+    return 0;
+}
+EXEC(INY) {
+    cpu->y += 1;
+    update_zero_negative_flags(cpu, cpu->y);
+    return 0;
+}
+EXEC(JMP) {
+    cpu->pc = addr;
+    return 0;
+}
+EXEC(JSR) {
+    push_u16(cpu, cpu->pc + 2 - 1);
+    cpu->pc = addr;
+    return 0; 
+}
+EXEC(LDA) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    cpu->a = data; 
+    update_zero_negative_flags(cpu, data); 
+    return page_crossed;
+}
+EXEC(LDX) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    cpu->x = data; 
+    update_zero_negative_flags(cpu, data); 
+    return page_crossed;
+}
+EXEC(LDY) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    cpu->y = data; 
+    update_zero_negative_flags(cpu, data); 
+    return page_crossed;
+}
+EXEC(LSR) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    set_flag(cpu, CPU_FLAG_C, data & 1); 
+    data >>= 1; 
+    cpu_write8(cpu, addr, data); 
+    update_zero_negative_flags(cpu, data); 
+    return 0; 
+}
+EXEC(NOP) {
+    return 0; 
+}
+EXEC(ORA) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    cpu->a |= data; 
+    update_zero_negative_flags(cpu, cpu->a); 
+    return page_crossed; 
+}
+EXEC(PHA) {
+    push_u8(cpu, cpu->a); 
+    return 0;
+}
+EXEC(PHP) {
+    uint8_t flags = cpu->p; 
+    flags |= CPU_FLAG_B; 
+    flags |= CPU_FLAG__; 
+    push_u8(cpu, flags);
+    return 0;
+}
+EXEC(PLA) {
+    cpu->a = pop_u8(cpu); 
+    update_zero_negative_flags(cpu, cpu->a);
+    return 0;
+}
+EXEC(PLP) {
+    uint8_t flags = pop_u8(cpu);
+    flags &= ~CPU_FLAG_B;
+    flags |= CPU_FLAG__;
+    cpu->p = flags; 
+}
+EXEC(ROL) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    bool carry_bit = flag_is_set(cpu, CPU_FLAG_C);
+    set_flag(cpu, CPU_FLAG_C, data >> 7);
+    data <<= 1; 
+    data |= carry_bit;
+    cpu_write8(cpu, addr, data); 
+    update_zero_negative_flags(cpu, data); 
+    return 0; 
+}
+EXEC(ROR) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    uint8_t carry_bit = flag_is_set(cpu, CPU_FLAG_C);
+    set_flag(cpu, CPU_FLAG_C, data & 1);
+    data >>= 1; 
+    if (carry_bit) {
+        data |= UINT8_C(0b10000000); 
+    }
+    cpu_write8(cpu, addr, data); 
+    update_zero_negative_flags(cpu, data); 
+    return 0; 
+}
+EXEC(RTI) {
+    cpu->p = pop_u8(cpu); 
+    cpu->p &= ~CPU_FLAG_B; 
+    cpu->p |= CPU_FLAG__; 
+    cpu->pc = pop_u16(cpu); 
+    return 0; 
+}
+EXEC(RTS) {
+    cpu->pc = pop_u16(cpu) + 1;
+    return 0;
+}
+EXEC(SBC) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    subtract_from_A(cpu, data);
+    return page_crossed;
+}
+EXEC(SEC) {
+    set_flag(cpu, CPU_FLAG_C, true);
+    return 0;
+}
+EXEC(SED) {
+    set_flag(cpu, CPU_FLAG_D, true);
+    return 0;
+}
+EXEC(SEI) {
+    set_flag(cpu, CPU_FLAG_I, true); 
+    return 0;
+}
+EXEC(STA) {
+    cpu_write8(cpu, addr, cpu->a); 
+    return 0;
+}
+EXEC(STX) {
+    cpu_write8(cpu, addr, cpu->x); 
+    return 0;
+}
+EXEC(STY) {
+    cpu_write8(cpu, addr, cpu->y); 
+    return 0;
+}
+EXEC(TAX) {
+    cpu->x = cpu->a; 
+    update_zero_negative_flags(cpu, cpu->x); 
+    return 0;
+}
+EXEC(TAY) {
+    cpu->y = cpu->a; 
+    update_zero_negative_flags(cpu, cpu->y); 
+    return 0;
+}
+EXEC(TSX) {
+    cpu->x = cpu->sp;
+    update_zero_negative_flags(cpu, cpu->x);
+    return 0;
+}
+EXEC(TXA) {
+    cpu->a = cpu->x; 
+    update_zero_negative_flags(cpu, cpu->a); 
+    return 0;
+}
+EXEC(TXS) {
+    cpu->sp = cpu->x;
+    return 0;
+}
+EXEC(TYA) {
+    cpu->a = cpu->y; 
+    update_zero_negative_flags(cpu, cpu->a); 
+    return 0;
+}
+EXEC(ASL_A) {
+    uint8_t value = cpu->a; 
+    set_flag(cpu, CPU_FLAG_C, value >> 7);
+    value <<= 1; 
+    cpu->a = value;
+    update_zero_negative_flags(cpu, value); 
+    return 0;
+}
+EXEC(LSR_A) {
+    uint8_t data = cpu->a; 
+    set_flag(cpu, CPU_FLAG_C, data & 1); 
+    data >>= 1; 
+    cpu->a = data;
+    update_zero_negative_flags(cpu, data); 
+    return 0; 
+}
+EXEC(ROL_A) {
+    uint8_t data = cpu->a; 
+    bool carry_bit = flag_is_set(cpu, CPU_FLAG_C);
+    set_flag(cpu, CPU_FLAG_C, data >> 7);
+    data <<= 1; 
+    data |= carry_bit;
+    cpu->a = data;
+    update_zero_negative_flags(cpu, data); 
+    return 0; 
+}
+EXEC(ROR_A) {
+    uint8_t data = cpu->a; 
+    uint8_t carry_bit = flag_is_set(cpu, CPU_FLAG_C);
+    set_flag(cpu, CPU_FLAG_C, data & 1);
+    data >>= 1; 
+    if (carry_bit) {
+        data |= UINT8_C(0b10000000); 
+    }
+    cpu->a = data; 
+    update_zero_negative_flags(cpu, data); 
+    return 0; 
+}
+EXEC(ALR_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    cpu->a &= data; 
+    update_zero_negative_flags(cpu, cpu->a); 
+    exec_LSR_A(cpu, addr, page_crossed); 
+    return 0;
+}
+EXEC(ANC_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    cpu->a &= data;
+    update_zero_negative_flags(cpu, cpu->a);
+    set_flag(cpu, CPU_FLAG_C, flag_is_set(cpu, CPU_FLAG_N)); 
+    return 0;
+}
+EXEC(ARR_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    cpu->a &= data;
+    update_zero_negative_flags(cpu, cpu->a); 
+    exec_ROR_A(cpu, addr, page_crossed); 
+    uint8_t result = cpu->a; 
+    uint8_t b5 = (result >> 5) & 1; 
+    uint8_t b6 = (result >> 6) & 1; 
+    set_flag(cpu, CPU_FLAG_C, b6); 
+    set_flag(cpu, CPU_FLAG_V, b5 != b6); 
+    // registers? 
+    update_zero_negative_flags(cpu, result); 
+    return 0;
+}
+EXEC(AXS_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    uint8_t xa = cpu->x & cpu->a; 
+    uint8_t result = xa - data; 
+    if (data <= xa) {
+        set_flag(cpu, CPU_FLAG_C, true); 
+    }
+    update_zero_negative_flags(cpu, result); 
+    cpu->x = result; 
+    return 0; 
+}
+EXEC(LAX_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    cpu->a = data;
+    cpu->x = data;
+    update_zero_negative_flags(cpu, data);
+    return 0;
+}
+EXEC(SAX_) {
+    cpu_write8(cpu, addr, cpu->a & cpu->x); 
+    return 0; 
+}
+EXEC(XAA_) {
+    cpu->a = cpu->x; 
+    update_zero_negative_flags(cpu, cpu->a); 
+    cpu->a &= cpu_read8(cpu, addr);
+    update_zero_negative_flags(cpu, cpu->a);
+    return 0;
+}
+EXEC(AHX_) {
+    /// TODO: fix this
+    return 0;
+}
+EXEC(TAS_) {
+    uint8_t data = cpu->a & cpu->x; 
+    cpu->sp = data; 
+    uint16_t mem_address = cpu_read16(cpu, cpu->pc) + (uint16_t)cpu->y; 
+    data = ((uint8_t)(mem_address >> 8) + 1) & cpu->sp;
+    cpu_write8(cpu, mem_address, data);
+    return 0;
+}
+EXEC(LAS_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    data &= cpu->sp;
+    cpu->a = data; 
+    cpu->x = data; 
+    cpu->sp = data; 
+    update_zero_negative_flags(cpu, data); 
+    return 0;
+}
+EXEC(DCP_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    data -= 1; 
+    cpu_write8(cpu, addr, data); 
+    if (data <= cpu->a) {
+        set_flag(cpu, CPU_FLAG_C, true); 
+    }
+    update_zero_negative_flags(cpu, cpu->a - data); 
+    return 0; 
+}
+EXEC(ISC_) {
+    uint8_t data = cpu_read8(cpu, addr);
+    data += 1;
+    cpu_write8(cpu, addr, data);
+    update_zero_negative_flags(cpu, data);
+    subtract_from_A(cpu, data); 
+    return 0; 
+}
+EXEC(RLA_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    bool carry_bit = flag_is_set(cpu, CPU_FLAG_C);
+    set_flag(cpu, CPU_FLAG_C, data >> 7);
+    data <<= 1; 
+    data |= carry_bit;
+    cpu_write8(cpu, addr, data); 
+    update_zero_negative_flags(cpu, data); 
+    cpu->a &= data;
+    update_zero_negative_flags(cpu, cpu->a); 
+    return 0; 
+}
+EXEC(RRA_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    uint8_t carry_bit = flag_is_set(cpu, CPU_FLAG_C);
+    set_flag(cpu, CPU_FLAG_C, data & 1);
+    data >>= 1; 
+    if (carry_bit) {
+        data |= UINT8_C(0b10000000); 
+    }
+    cpu_write8(cpu, addr, data); 
+    update_zero_negative_flags(cpu, data); 
+    add_to_A(cpu, data); 
+    return 0; 
+}
+EXEC(SLO_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    set_flag(cpu, CPU_FLAG_C, data >> 7);
+    data <<= 1; 
+    cpu_write8(cpu, addr, data);
+    update_zero_negative_flags(cpu, data); 
+    cpu->a |= data; 
+    update_zero_negative_flags(cpu, cpu->a); 
+    return 0;
+}
+EXEC(SRE_) {
+    uint8_t data = cpu_read8(cpu, addr); 
+    set_flag(cpu, CPU_FLAG_C, data & 1); 
+    data >>= 1; 
+    cpu_write8(cpu, addr, data); 
+    update_zero_negative_flags(cpu, data); 
+    cpu->a ^= data;
+    update_zero_negative_flags(cpu, cpu->a);
+    return 0; 
+}
+EXEC(SHY_) {
+    uint16_t mem_address = cpu_read16(cpu, cpu->pc) + (uint16_t)cpu->x; 
+    uint8_t data = cpu->y & ((uint8_t)(mem_address >> 8) + 1); 
+    cpu_write8(cpu, mem_address, data); 
+    return 0;
+}
+EXEC(SHX_) {
+    uint16_t mem_address = cpu_read16(cpu, cpu->pc) + (uint16_t)cpu->y; 
+    // if cross page boundry {
+    //     mem_address &= ((uint16_t)cpu.x) << 8;
+    // }
+    uint8_t data = cpu->x & ((uint8_t)(mem_address >> 8) + 1); 
+    cpu_write8(cpu, mem_address, data); 
+    return 0;
+}
+EXEC(SBC_) {
+    return exec_SBC(cpu, addr, page_crossed); 
+}
+EXEC(NOP_) {
+    /// TODO: some nops has read actions 
+    return page_crossed;
+}
+EXEC(STP_) {
+    panic("CPU halted!\n"); 
+    return 0; 
+}
+#define OPCODE_CASEBRANCH(OPCODE_HEX) \
+case OPCODE_HEX: { \
+OP_GETADDR(OP_GETMODE_HEX(OPCODE_HEX))(addr, cpu, cpu->pc, page_crossed); \
+additional_cycles = OP_EXECINSTR(OP_GETINSTR_HEX(OPCODE_HEX))(cpu, addr, page_crossed);\
+instr_length = OP_GETLENGTH(OP_GETMODE_HEX(OPCODE_HEX));\
+base_cycle = OP_GETCYC(OPCODE_HEX);\
+} break;
 internal_function int single_step(struct nescpu *cpu) {
     uint8_t opcode = cpu_read8(cpu, cpu->pc); 
-    struct cpu_opcode opcode_entry = opcode_table[opcode];  
+    // struct cpu_opcode opcode_entry = opcode_table[opcode];  
     cpu->pc += 1; // increment the PC by 1 so that it's pointing at the address byte 
-
+    uint16_t prev_pc = cpu->pc;
+    uint16_t addr;
+    bool page_crossed = false;
+    unsigned additional_cycles;
+    unsigned instr_length;
+    unsigned base_cycle;
     // TODO: switch on instruction 
-
+    switch (opcode) {
+        OPCODE_CASES(OPCODE_CASEBRANCH)
+        default: 
+            panic("invalid opcode %02x\n", opcode); 
+            break;
+    }
     // TODO: add pc with the instruction length - 1 
-
+    if (cpu->pc == prev_pc) {
+        cpu->pc += (instr_length - 1);
+    }
     // TODO: handle cycles_taken 
+    base_cycle += additional_cycles;
+
+    return 0;
 }
 
 int cpu_single_step(struct nescpu *cpu) { return single_step(cpu); }

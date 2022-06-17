@@ -318,4 +318,7 @@ by merely comparing its instruction value with _UNOFFICIAL_INSTRUCTION_START
 #define OP_GETINSTR(...) OP_GETINSTR_HEX(__VA_ARGS__)
 #define OP_GETINSTR_HEX(OPCODE_HEX) OP_INSTR_##OPCODE_HEX
 
+#define OP_EXECINSTR(...) OP_EXECINSTR_S(__VA_ARGS__)
+#define OP_EXECINSTR_S(INSTR) exec_##INSTR
+
 
