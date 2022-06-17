@@ -56,3 +56,7 @@ struct cpu_opcode {
 extern const struct cpu_opcode opcode_table[256]; 
 extern const char opcode_nametable[256][4]; 
 
+
+void print_cpu_opcode_nametable(void); 
+
+

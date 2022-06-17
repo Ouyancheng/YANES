@@ -35,4 +35,12 @@ const char opcode_nametable[256][4] = {
 
 };
 
-
+void print_cpu_opcode_nametable(void) {
+    printf("const char opcode_nametable[256][4] = {\n");
+    for (size_t i = 0x00; i <= 0xFF; ++i) {
+        if ((i & 0x1F) == 0) printf("    ");
+        printf("\"%s\",", opcode_nametable[i]);
+        if ((i & 0x1F) == 0x1F) printf("\n");
+    }
+    printf("};\n");
+}

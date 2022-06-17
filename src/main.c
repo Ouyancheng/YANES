@@ -6,8 +6,7 @@ int main(int argc, const char *const argv[]) {
         sizeof(enum cpu_instruction),
         sizeof(enum addressmode)
     ); 
-    
-    
+    print_cpu_opcode_nametable(); 
     return 0; 
 }
 
