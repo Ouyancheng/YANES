@@ -98,12 +98,12 @@ typedef struct nescpu cpu_t;
 #define EXEC(INSTR) internal_function unsigned exec_##INSTR(cpu_t *cpu, uint16_t addr, bool page_crossed)
 EXEC(ADC) {
     add_to_A(cpu, cpu_read8(cpu, addr)); 
-    return 0;
+    return page_crossed;
 }
 EXEC(AND) {
     cpu->a &= cpu_read8(cpu, addr);
     update_zero_negative_flags(cpu, cpu->a); 
-    return 0;
+    return page_crossed;
 }
 EXEC(ASL) {
     uint8_t value = cpu_read8(cpu, addr); 

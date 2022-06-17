@@ -19,6 +19,8 @@ set(PROJECT_C_FILES
     src/main.c
     src/sdk.c
 )
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 add_executable(${TARGET} ${PROJECT_C_FILES} )
 target_include_directories(${TARGET} PUBLIC PROJECT_INCLUDE_DIRS)
 
