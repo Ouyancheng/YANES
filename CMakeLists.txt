@@ -13,6 +13,7 @@ set(PROJECT_INCLUDE_DIRS
     ${SDL2_INCLUDE_DIRS}
 )
 set(PROJECT_C_FILES
+    src/cpu_opcode_nametable.c
     src/cpu_opcodes.c
     src/cpu.c
     src/main.c
