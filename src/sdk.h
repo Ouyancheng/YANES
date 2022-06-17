@@ -12,3 +12,8 @@
 int panic_at(const char *file, int line, const char *function, const char *format, ...); 
 #define panic(...) panic_at(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
+#ifdef __GNUC__
+#define PACKED __attribute__((__packed__))
+#else 
+#define PACKED 
+#endif 
