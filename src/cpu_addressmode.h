@@ -1,5 +1,6 @@
 #pragma once 
 #include "sdk.h"
+#include "macros.h"
 enum addressmode {
     MODE_ABS, // addressmode_absolute, 
     MODE_ZPG, // addressmode_zeropage, 
@@ -17,8 +18,6 @@ enum addressmode {
 };
 
 
-#define OP_GETMODE(...) OP_GETMODE_HEX(__VA_ARGS__)
-#define OP_GETMODE_HEX(OPCODE_HEX) OP_MODE_##OPCODE_HEX
 
 #define OP_MODE_0x00 MODE_IMP
 #define OP_MODE_0x20 MODE_ABS
@@ -311,7 +310,6 @@ enum addressmode {
 #define OP_MODE_0xDF MODE_ABX
 #define OP_MODE_0xFF MODE_ABX
 
-
 #define GETADDR_MODE_IMP(addr, cpu, ptr, page_crossed) ((void)0)
 #define GETADDR_MODE_ACC(addr, cpu, ptr, page_crossed) ((void)0)
 #define GETADDR_MODE_IMM(addr, cpu, ptr, page_crossed) do { addr = ptr; } while (0)
@@ -359,9 +357,8 @@ enum addressmode {
     addr = base + cpu->y; \
     page_crossed = check_page_crossed(base, addr); } while (0)
 
-#define MACRO_CONCAT(A, B) A##B
-#define OP_GETADDR_S(ADDRMODE) GETADDR_##ADDRMODE
-#define OP_GETADDR(...) OP_GETADDR_S(__VA_ARGS__)
+
+
 
 #define GETLENGTH_MODE_IMP 1
 #define GETLENGTH_MODE_ACC 1
@@ -377,10 +374,26 @@ enum addressmode {
 #define GETLENGTH_MODE_INX 2
 #define GETLENGTH_MODE_INY 2
 
-#define OP_GETLENGTH_S(RES) GETLENGTH_##RES
-#define OP_GETLENGTH(...) OP_GETLENGTH_S(__VA_ARGS__)
+
+// #define OP_GETMODE(...) OP_GETMODE_HEX(__VA_ARGS__)
+// #define OP_GETMODE_HEX(OPCODE_HEX) OP_MODE_##OPCODE_HEX
+#define OP_GETMODE(OPCODE_HEX) MACRO_CONCAT(OP_MODE_, OPCODE_HEX)
+
+// #define OP_GETADDR_S(ADDRMODE) GETADDR_##ADDRMODE
+// #define OP_GETADDR(...) OP_GETADDR_S(__VA_ARGS__)
+// #define ADDRMODE_GETADDR_S(ADDRMODE) GETADDR_##ADDRMODE
+// #define ADDRMODE_GETADDR(...) ADDRMODE_GETADDR_S(__VA_ARGS__)
+#define ADDRMODE_GETADDR(MODE) MACRO_CONCAT(GETADDR_, MODE)
+#define OP_GETADDR(OPCODE_HEX) MACRO_CONCAT(GETADDR_, OP_GETMODE(OPCODE_HEX))
+
+// #define OP_GETLENGTH_S(RES) GETLENGTH_##RES
+// #define OP_GETLENGTH(...) OP_GETLENGTH_S(__VA_ARGS__)
+#define OP_GETLENGTH(OPCODE_HEX) MACRO_CONCAT(GETLENGTH_, OP_GETMODE(OPCODE_HEX))
+
 // DO NOT CALL, no external linkage is generated 
 inline void cpu_opcode_addrmode_test(void) {
-    _Static_assert(OP_GETLENGTH(OP_GETMODE_HEX(0x09)) == 2, "");
-    OP_GETADDR(OP_GETMODE_HEX(0x6A))(addr, cpu, ptr, page_crossed);
+    // _Static_assert(OP_GETLENGTH(OP_GETMODE_HEX(0x09)) == 2, "");
+    // OP_GETADDR(OP_GETMODE_HEX(0x6A))(addr, cpu, ptr, page_crossed);
+    _Static_assert(OP_GETLENGTH(0x09) == 2, "");
+    OP_GETADDR(0x6A)(addr, cpu, ptr, page_crossed);
 }

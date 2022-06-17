@@ -10,7 +10,6 @@
  */
 
 #include "cpu.h"
-#include "cpu_opcodes.h"
 
 
 extern inline uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr); 

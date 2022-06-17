@@ -51,15 +51,26 @@ uint16_t cpu_compute_address(struct nescpu *cpu, uint8_t addrmode, uint16_t ptr,
 /// NOTE: in C, the static variables defined within an inlined function
 /// are different between the inline definition and the external linkage
 
-/// reads a byte from the address addr 
-inline uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
+/// non-destructively reads a byte from the address addr 
+inline uint8_t cpu_peek8(struct nescpu *cpu, uint16_t addr) {
     panic("TODO"); 
     return 0;
+}
+/// reads a byte from the address addr 
+inline uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
+    // panic("TODO"); 
+    return 0x02;
 }
 inline void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value) {
     panic("TODO"); 
 }
 
+inline uint16_t cpu_peel16(struct nescpu *cpu, uint16_t addr) {
+    return (
+        ((uint16_t)cpu_peek8(cpu, addr)) | 
+        (((uint16_t)cpu_peek8(cpu, addr+1)) << 8)
+    );
+}
 inline uint16_t cpu_read16(struct nescpu *cpu, uint16_t addr) {
     return (
         ((uint16_t)cpu_read8(cpu, addr)) | 
@@ -104,4 +115,7 @@ C(0xE0) C(0xE1) C(0xE2) C(0xE3) C(0xE4) C(0xE5) C(0xE6) C(0xE7) \
 C(0xE8) C(0xE9) C(0xEA) C(0xEB) C(0xEC) C(0xED) C(0xEE) C(0xEF) \
 C(0xF0) C(0xF1) C(0xF2) C(0xF3) C(0xF4) C(0xF5) C(0xF6) C(0xF7) \
 C(0xF8) C(0xF9) C(0xFA) C(0xFB) C(0xFC) C(0xFD) C(0xFE) C(0xFF) 
+
+extern const char opcode_nametable[256][4]; 
+void print_cpu_opcode_nametable(void);
 

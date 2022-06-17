@@ -1,5 +1,7 @@
 #include "cpu.h"
-#include "cpu_opcodes.h"
+#include "cpu_addressmode.h"
+#include "cpu_instruction.h"
+
 
 #define internal_function static inline
 
@@ -24,18 +26,18 @@ uint16_t cpu_compute_address(struct nescpu *cpu, uint8_t addrmode, uint16_t ptr,
     bool page_crossed = false; 
     uint16_t addr = 0; 
     switch (addrmode) {
-        case MODE_IMP: OP_GETADDR(MODE_IMP)(addr, cpu, ptr, page_crossed); break;
-        case MODE_ABS: OP_GETADDR(MODE_ABS)(addr, cpu, ptr, page_crossed); break;
-        case MODE_ZPG: OP_GETADDR(MODE_ZPG)(addr, cpu, ptr, page_crossed); break;
-        case MODE_ZPX: OP_GETADDR(MODE_ZPX)(addr, cpu, ptr, page_crossed); break;
-        case MODE_ZPY: OP_GETADDR(MODE_ZPY)(addr, cpu, ptr, page_crossed); break;
-        case MODE_ABX: OP_GETADDR(MODE_ABX)(addr, cpu, ptr, page_crossed); break;
-        case MODE_ABY: OP_GETADDR(MODE_ABY)(addr, cpu, ptr, page_crossed); break;
-        case MODE_REL: OP_GETADDR(MODE_REL)(addr, cpu, ptr, page_crossed); break;
-        case MODE_IMM: OP_GETADDR(MODE_IMM)(addr, cpu, ptr, page_crossed); break;
-        case MODE_IND: OP_GETADDR(MODE_IND)(addr, cpu, ptr, page_crossed); break;
-        case MODE_INX: OP_GETADDR(MODE_INX)(addr, cpu, ptr, page_crossed); break;
-        case MODE_INY: OP_GETADDR(MODE_INY)(addr, cpu, ptr, page_crossed); break;
+        case MODE_IMP: ADDRMODE_GETADDR(MODE_IMP)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ABS: ADDRMODE_GETADDR(MODE_ABS)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ZPG: ADDRMODE_GETADDR(MODE_ZPG)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ZPX: ADDRMODE_GETADDR(MODE_ZPX)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ZPY: ADDRMODE_GETADDR(MODE_ZPY)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ABX: ADDRMODE_GETADDR(MODE_ABX)(addr, cpu, ptr, page_crossed); break;
+        case MODE_ABY: ADDRMODE_GETADDR(MODE_ABY)(addr, cpu, ptr, page_crossed); break;
+        case MODE_REL: ADDRMODE_GETADDR(MODE_REL)(addr, cpu, ptr, page_crossed); break;
+        case MODE_IMM: ADDRMODE_GETADDR(MODE_IMM)(addr, cpu, ptr, page_crossed); break;
+        case MODE_IND: ADDRMODE_GETADDR(MODE_IND)(addr, cpu, ptr, page_crossed); break;
+        case MODE_INX: ADDRMODE_GETADDR(MODE_INX)(addr, cpu, ptr, page_crossed); break;
+        case MODE_INY: ADDRMODE_GETADDR(MODE_INY)(addr, cpu, ptr, page_crossed); break;
         default:
             panic("invalid addressmode %u\n", (unsigned)addrmode); 
             break;
@@ -65,6 +67,7 @@ internal_function unsigned branch(struct nescpu *cpu, bool cond, uint16_t taken_
         cpu->pc = taken_addr;
         total_cycles += page_crossed;
     }
+    return total_cycles;
 }
 internal_function unsigned compare(struct nescpu *cpu, uint8_t compare_with, uint16_t addr, bool page_crossed) {
     uint8_t data = cpu_read8(cpu, addr); 
@@ -275,6 +278,7 @@ EXEC(PLP) {
     flags &= ~CPU_FLAG_B;
     flags |= CPU_FLAG__;
     cpu->p = flags; 
+    return 0;
 }
 EXEC(ROL) {
     uint8_t data = cpu_read8(cpu, addr); 
@@ -574,11 +578,17 @@ EXEC(STP_) {
 }
 #define OPCODE_CASEBRANCH(OPCODE_HEX) \
 case OPCODE_HEX: { \
-OP_GETADDR(OP_GETMODE_HEX(OPCODE_HEX))(addr, cpu, cpu->pc, page_crossed); \
-additional_cycles = OP_EXECINSTR(OP_GETINSTR_HEX(OPCODE_HEX))(cpu, addr, page_crossed);\
-instr_length = OP_GETLENGTH(OP_GETMODE_HEX(OPCODE_HEX));\
-base_cycle = OP_GETCYC(OPCODE_HEX);\
+    OP_GETADDR(OPCODE_HEX)(addr, cpu, cpu->pc, page_crossed); \
+    additional_cycles = EXECINSTR(OP_GETINSTR(OPCODE_HEX))(cpu, addr, page_crossed);\
+    instr_length = OP_GETLENGTH(OPCODE_HEX);\
+    base_cycle = OP_GETCYC(OPCODE_HEX);\
 } break;
+
+
+
+
+
+
 internal_function int single_step(struct nescpu *cpu) {
     uint8_t opcode = cpu_read8(cpu, cpu->pc); 
     // struct cpu_opcode opcode_entry = opcode_table[opcode];  
@@ -589,14 +599,14 @@ internal_function int single_step(struct nescpu *cpu) {
     unsigned additional_cycles;
     unsigned instr_length;
     unsigned base_cycle;
-    // TODO: switch on instruction 
+    // switch on instruction 
     switch (opcode) {
         OPCODE_CASES(OPCODE_CASEBRANCH)
         default: 
             panic("invalid opcode %02x\n", opcode); 
             break;
     }
-    // TODO: add pc with the instruction length - 1 
+    // add pc with the instruction length - 1 if it's not a branch 
     if (cpu->pc == prev_pc) {
         cpu->pc += (instr_length - 1);
     }

@@ -1,5 +1,4 @@
-#include "cpu_opcodes.h"
-
+#include "sdk.h"
 /**
  * How to generate the following table: 
  * To generate one row of the table: 
