@@ -57,7 +57,7 @@ internal_function void add_to_A(struct nescpu *cpu, uint8_t value) {
 }
 
 internal_function void subtract_from_A(struct nescpu *cpu, uint8_t value) {
-    add_to_A(cpu, (uint8_t)((-(int8_t)value) - 1)); 
+    add_to_A(cpu, (uint8_t)((-(int8_t)value) - 1)); // or say: A - M - (neg C) -> A
 }
 
 internal_function unsigned branch(struct nescpu *cpu, bool cond, uint16_t taken_addr, bool page_crossed) {
@@ -589,7 +589,7 @@ page boundary crossings may not work (with the high-byte of the value used as th
     cpu_write8(cpu, mem_address, data); 
     return 0;
 }
-EXEC(SBC_) { // SBC oper + NOP: effectively same as normal SBC immediate, instr. E9.: A - M - C -> A
+EXEC(SBC_) { // SBC oper + NOP: effectively same as normal SBC immediate, instr. E9.: A - M - (neg C) -> A
     return exec_SBC(cpu, addr, page_crossed); 
 }
 EXEC(NOP_) {
@@ -634,7 +634,7 @@ internal_function int single_step(struct nescpu *cpu) {
     if (cpu->pc == prev_pc) {
         cpu->pc += (instr_length - 1);
     }
-    // TODO: handle cycles_taken 
+    /// TODO: handle cycles_taken 
     base_cycle += additional_cycles;
 
     return 0;

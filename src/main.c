@@ -23,7 +23,7 @@ int main(int argc, const char *const argv[]) {
     // cpu_reset(&cpu);
     // cpu_run(&cpu, NULL);
     
-    test_snake();
+    // test_snake();
     return 0; 
 }
 

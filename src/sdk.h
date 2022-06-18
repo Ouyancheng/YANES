@@ -25,4 +25,10 @@ struct rgb {
     uint8_t a;
 };
 
+/// NOTE: returns allocated memory, remember to free
+uint8_t *load_file(const char *filepath); 
+
+void *allocate_memory(size_t size);
+void deallocate_memory(void *ptr);
+
 
