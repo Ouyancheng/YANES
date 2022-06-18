@@ -1,14 +1,3 @@
-/**
- * The NES's 6502 CPU 
- * Very useful information: 
- * Opcode description: https://llx.com/Neil/a2/opcodes.html 
- * The 6502 instruction set: https://www.masswerk.at/6502/6502_instruction_set.html 
- * The illegal opcodes: https://www.masswerk.at/nowgobang/2021/6502-illegal-opcodes 
- * The opcode table: https://www.nesdev.org/wiki/CPU_unofficial_opcodes 
- * The 6502 simulator: http://www.visual6502.org/JSSim/expert.html 
- * The instructions: http://www.6502.org/tutorials/6502opcodes.html 
- */
-
 #include "cpu.h"
 
 

@@ -1,3 +1,14 @@
+/**
+ * The NES's 6502 CPU 
+ * Very useful information: 
+ * Opcode description: https://llx.com/Neil/a2/opcodes.html 
+ * The 6502 instruction set: https://www.masswerk.at/6502/6502_instruction_set.html 
+ * The illegal opcodes: https://www.masswerk.at/nowgobang/2021/6502-illegal-opcodes 
+ * The opcode table: https://www.nesdev.org/wiki/CPU_unofficial_opcodes 
+ * The 6502 simulator: http://www.visual6502.org/JSSim/expert.html 
+ * The instructions: http://www.6502.org/tutorials/6502opcodes.html 
+ * http://www.oxyron.de/html/opcodes02.html
+ */
 #pragma once 
 
 #include "sdk.h"
@@ -55,10 +66,11 @@ uint16_t cpu_compute_address(struct nescpu *cpu, uint8_t addrmode, uint16_t ptr,
 
 
 
-/// non-destructively reads a byte from the address addr 
+/// non-destructively reads a byte from the address addr (are the reads destructive?)
 inline uint8_t cpu_peek8(struct nescpu *cpu, uint16_t addr) {
-    panic("TODO"); 
-    return 0;
+    // panic("TODO"); 
+    // return 0;
+    return cpu_read8(cpu, addr); 
 }
 /// reads a byte from the address addr 
 inline uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
