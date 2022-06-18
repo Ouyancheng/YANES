@@ -454,12 +454,13 @@ EXEC(LAX_) { // LDA oper + LDX oper: M -> A -> X
     Store * AND oper in A and X
     Highly unstable, involves a 'magic' constant, see ANE(XAA)
     (A OR CONST) AND oper -> A -> X
+    The rest of the LAX seem to be stable...
 */
     uint8_t data = cpu_read8(cpu, addr); 
     cpu->a = data;
     cpu->x = data;
     update_zero_negative_flags(cpu, data);
-    return 0;
+    return page_crossed;
 }
 EXEC(SAX_) { // A and X are put on the bus at the same time (resulting effectively in an AND operation) and stored in M
 // A AND X -> M
@@ -481,7 +482,7 @@ page boundary crossings may not work (with the high-byte of the value used as th
 */
     /// TODO: fix this
     cpu_write8(cpu, addr, cpu->a & cpu->x & ((uint8_t)(addr >> 8)) + 1); 
-    return page_crossed;
+    return 0;
 }
 EXEC(TAS_) { // Puts A AND X in SP and stores A AND X AND (high-byte of addr. + 1) at addr.: A AND X -> SP, A AND X AND (H+1) -> M
     uint8_t data = cpu->a & cpu->x; 
@@ -498,7 +499,7 @@ EXEC(LAS_) { // LDA/TSX oper: M AND SP -> A, X, SP
     cpu->x = data; 
     cpu->sp = data; 
     update_zero_negative_flags(cpu, data); 
-    return 0;
+    return page_crossed;
 }
 EXEC(DCP_) { // DEC oper + CMP oper: M - 1 -> M, A - M
     uint8_t data = cpu_read8(cpu, addr); 
@@ -568,7 +569,7 @@ EXEC(SHY_) { // Stores Y AND (high-byte of addr. + 1) at addr.: Y AND (H+1) -> M
     uint16_t mem_address = cpu_read16(cpu, cpu->pc) + (uint16_t)cpu->x; 
     uint8_t data = cpu->y & ((uint8_t)(mem_address >> 8) + 1); 
     cpu_write8(cpu, mem_address, data); 
-    return page_crossed;
+    return 0;
 }
 EXEC(SHX_) { // Stores X AND (high-byte of addr. + 1) at addr.: X AND (H+1) -> M
 /*
@@ -581,7 +582,7 @@ page boundary crossings may not work (with the high-byte of the value used as th
     // }
     uint8_t data = cpu->x & ((uint8_t)(mem_address >> 8) + 1); 
     cpu_write8(cpu, mem_address, data); 
-    return page_crossed;
+    return 0;
 }
 EXEC(SBC_) { // SBC oper + NOP: effectively same as normal SBC immediate, instr. E9.: A - M - C -> A
     return exec_SBC(cpu, addr, page_crossed); 
