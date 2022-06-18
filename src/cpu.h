@@ -7,7 +7,9 @@
  * The opcode table: https://www.nesdev.org/wiki/CPU_unofficial_opcodes 
  * The 6502 simulator: http://www.visual6502.org/JSSim/expert.html 
  * The instructions: http://www.6502.org/tutorials/6502opcodes.html 
- * http://www.oxyron.de/html/opcodes02.html
+ * Another opcode table: http://www.oxyron.de/html/opcodes02.html
+ * 
+ * How the flags are handled, especially the B and _ flags: https://www.nesdev.org/wiki/Status_flags#The_B_flag
  */
 #pragma once 
 

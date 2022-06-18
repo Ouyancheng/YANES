@@ -140,6 +140,11 @@ EXEC(BPL) {
     return branch(cpu, !flag_is_set(cpu, CPU_FLAG_N), addr, page_crossed); 
 }
 EXEC(BRK) {
+    uint8_t flags = cpu->p; 
+    flags |= CPU_FLAG_B;
+    flags |= CPU_FLAG__; 
+    push_u8(cpu, flags); 
+    set_flag(cpu, CPU_FLAG_I, true); 
     panic("BRK occurred, but not handled\n");
     return 0; 
 }
