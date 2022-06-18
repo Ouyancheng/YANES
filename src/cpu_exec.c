@@ -410,21 +410,23 @@ EXEC(ROR_A) {
     update_zero_negative_flags(cpu, data); 
     return 0; 
 }
-EXEC(ALR_) {
+EXEC(ALR_) { // AND oper + LSR: A AND oper, 0 -> [76543210] -> C
     uint8_t data = cpu_read8(cpu, addr); 
     cpu->a &= data; 
     update_zero_negative_flags(cpu, cpu->a); 
     exec_LSR_A(cpu, addr, page_crossed); 
     return 0;
 }
-EXEC(ANC_) {
+EXEC(ANC_) { // 0B: AND oper + set C as ASL: A AND oper, bit(7) -> C
+// 2B: AND oper + set C as ROL: effectively the same as instr. 0B: A AND oper, bit(7) -> C
     uint8_t data = cpu_read8(cpu, addr); 
     cpu->a &= data;
     update_zero_negative_flags(cpu, cpu->a);
     set_flag(cpu, CPU_FLAG_C, flag_is_set(cpu, CPU_FLAG_N)); 
     return 0;
 }
-EXEC(ARR_) {
+EXEC(ARR_) { // AND oper + ROR: A AND oper, C -> [76543210] -> C 
+    /// TODO: validate this
     uint8_t data = cpu_read8(cpu, addr); 
     cpu->a &= data;
     update_zero_negative_flags(cpu, cpu->a); 
@@ -432,46 +434,56 @@ EXEC(ARR_) {
     uint8_t result = cpu->a; 
     uint8_t b5 = (result >> 5) & 1; 
     uint8_t b6 = (result >> 6) & 1; 
-    set_flag(cpu, CPU_FLAG_C, b6); 
-    set_flag(cpu, CPU_FLAG_V, b5 != b6); 
+    set_flag(cpu, CPU_FLAG_C, b6); // The carry is not set, but bit 7 (sign) is exchanged with the carry
+    set_flag(cpu, CPU_FLAG_V, b5 != b6); // V-flag is set according to (A AND oper) + oper
     // registers? 
     update_zero_negative_flags(cpu, result); 
     return 0;
 }
-EXEC(AXS_) {
+EXEC(AXS_) { // SBX (AXS, SAX): CMP and DEX at once, sets flags like CMP: (A AND X) - oper -> X
     uint8_t data = cpu_read8(cpu, addr); 
     uint8_t xa = cpu->x & cpu->a; 
     uint8_t result = xa - data; 
-    if (data <= xa) {
-        set_flag(cpu, CPU_FLAG_C, true); 
-    }
+    set_flag(cpu, CPU_FLAG_C, data <= xa); 
     update_zero_negative_flags(cpu, result); 
     cpu->x = result; 
     return 0; 
 }
-EXEC(LAX_) {
+EXEC(LAX_) { // LDA oper + LDX oper: M -> A -> X
+/* NOTE: 0xAB: LXA (LAX immediate) 
+    Store * AND oper in A and X
+    Highly unstable, involves a 'magic' constant, see ANE(XAA)
+    (A OR CONST) AND oper -> A -> X
+*/
     uint8_t data = cpu_read8(cpu, addr); 
     cpu->a = data;
     cpu->x = data;
     update_zero_negative_flags(cpu, data);
     return 0;
 }
-EXEC(SAX_) {
+EXEC(SAX_) { // A and X are put on the bus at the same time (resulting effectively in an AND operation) and stored in M
+// A AND X -> M
     cpu_write8(cpu, addr, cpu->a & cpu->x); 
     return 0; 
 }
-EXEC(XAA_) {
-    cpu->a = cpu->x; 
+EXEC(XAA_) { // * AND X + AND oper: (A OR CONST) AND X AND oper -> A
+    cpu->a &= cpu->x; 
     update_zero_negative_flags(cpu, cpu->a); 
     cpu->a &= cpu_read8(cpu, addr);
     update_zero_negative_flags(cpu, cpu->a);
     return 0;
 }
-EXEC(AHX_) {
+EXEC(AHX_) { // Stores A AND X AND (high-byte of addr. + 1) at addr.
+// A AND X AND (H+1) -> M
+/*
+unstable: sometimes 'AND (H+1)' is dropped, 
+page boundary crossings may not work (with the high-byte of the value used as the high-byte of the address)
+*/
     /// TODO: fix this
-    return 0;
+    cpu_write8(cpu, addr, cpu->a & cpu->x & ((uint8_t)(addr >> 8)) + 1); 
+    return page_crossed;
 }
-EXEC(TAS_) {
+EXEC(TAS_) { // Puts A AND X in SP and stores A AND X AND (high-byte of addr. + 1) at addr.: A AND X -> SP, A AND X AND (H+1) -> M
     uint8_t data = cpu->a & cpu->x; 
     cpu->sp = data; 
     uint16_t mem_address = cpu_read16(cpu, cpu->pc) + (uint16_t)cpu->y; 
@@ -479,7 +491,7 @@ EXEC(TAS_) {
     cpu_write8(cpu, mem_address, data);
     return 0;
 }
-EXEC(LAS_) {
+EXEC(LAS_) { // LDA/TSX oper: M AND SP -> A, X, SP
     uint8_t data = cpu_read8(cpu, addr); 
     data &= cpu->sp;
     cpu->a = data; 
@@ -488,17 +500,18 @@ EXEC(LAS_) {
     update_zero_negative_flags(cpu, data); 
     return 0;
 }
-EXEC(DCP_) {
+EXEC(DCP_) { // DEC oper + CMP oper: M - 1 -> M, A - M
     uint8_t data = cpu_read8(cpu, addr); 
     data -= 1; 
     cpu_write8(cpu, addr, data); 
-    if (data <= cpu->a) {
-        set_flag(cpu, CPU_FLAG_C, true); 
-    }
+    set_flag(cpu, CPU_FLAG_C, data <= cpu->a); 
+    // if (data <= cpu->a) {
+    //     set_flag(cpu, CPU_FLAG_C, true); 
+    // }
     update_zero_negative_flags(cpu, cpu->a - data); 
     return 0; 
 }
-EXEC(ISC_) {
+EXEC(ISC_) { // INC oper + SBC oper: M + 1 -> M, A - M - (neg C) -> A
     uint8_t data = cpu_read8(cpu, addr);
     data += 1;
     cpu_write8(cpu, addr, data);
@@ -506,7 +519,7 @@ EXEC(ISC_) {
     subtract_from_A(cpu, data); 
     return 0; 
 }
-EXEC(RLA_) {
+EXEC(RLA_) { // ROL oper + AND oper: M = C <- [76543210] <- C, A AND M -> A
     uint8_t data = cpu_read8(cpu, addr); 
     bool carry_bit = flag_is_set(cpu, CPU_FLAG_C);
     set_flag(cpu, CPU_FLAG_C, data >> 7);
@@ -518,7 +531,7 @@ EXEC(RLA_) {
     update_zero_negative_flags(cpu, cpu->a); 
     return 0; 
 }
-EXEC(RRA_) {
+EXEC(RRA_) { // ROR oper + ADC oper: M = C -> [76543210] -> C, A + M + C -> A, C
     uint8_t data = cpu_read8(cpu, addr); 
     uint8_t carry_bit = flag_is_set(cpu, CPU_FLAG_C);
     set_flag(cpu, CPU_FLAG_C, data & 1);
@@ -531,7 +544,7 @@ EXEC(RRA_) {
     add_to_A(cpu, data); 
     return 0; 
 }
-EXEC(SLO_) {
+EXEC(SLO_) { // ASL oper + ORA oper: M = C <- [76543210] <- 0, A OR M -> A
     uint8_t data = cpu_read8(cpu, addr); 
     set_flag(cpu, CPU_FLAG_C, data >> 7);
     data <<= 1; 
@@ -541,7 +554,7 @@ EXEC(SLO_) {
     update_zero_negative_flags(cpu, cpu->a); 
     return 0;
 }
-EXEC(SRE_) {
+EXEC(SRE_) { // LSR oper + EOR oper: M = 0 -> [76543210] -> C, A EOR M -> A
     uint8_t data = cpu_read8(cpu, addr); 
     set_flag(cpu, CPU_FLAG_C, data & 1); 
     data >>= 1; 
@@ -551,26 +564,30 @@ EXEC(SRE_) {
     update_zero_negative_flags(cpu, cpu->a);
     return 0; 
 }
-EXEC(SHY_) {
+EXEC(SHY_) { // Stores Y AND (high-byte of addr. + 1) at addr.: Y AND (H+1) -> M
     uint16_t mem_address = cpu_read16(cpu, cpu->pc) + (uint16_t)cpu->x; 
     uint8_t data = cpu->y & ((uint8_t)(mem_address >> 8) + 1); 
     cpu_write8(cpu, mem_address, data); 
-    return 0;
+    return page_crossed;
 }
-EXEC(SHX_) {
+EXEC(SHX_) { // Stores X AND (high-byte of addr. + 1) at addr.: X AND (H+1) -> M
+/*
+unstable: sometimes 'AND (H+1)' is dropped, 
+page boundary crossings may not work (with the high-byte of the value used as the high-byte of the address)
+*/
     uint16_t mem_address = cpu_read16(cpu, cpu->pc) + (uint16_t)cpu->y; 
     // if cross page boundry {
     //     mem_address &= ((uint16_t)cpu.x) << 8;
     // }
     uint8_t data = cpu->x & ((uint8_t)(mem_address >> 8) + 1); 
     cpu_write8(cpu, mem_address, data); 
-    return 0;
+    return page_crossed;
 }
-EXEC(SBC_) {
+EXEC(SBC_) { // SBC oper + NOP: effectively same as normal SBC immediate, instr. E9.: A - M - C -> A
     return exec_SBC(cpu, addr, page_crossed); 
 }
 EXEC(NOP_) {
-    /// TODO: some nops has read actions 
+    /// TODO: some nops has read actions (Maybe?)
     return page_crossed;
 }
 EXEC(STP_) {

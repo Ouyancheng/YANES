@@ -86,14 +86,14 @@ by merely comparing its instruction value with _UNOFFICIAL_INSTRUCTION_START
 #define OP_INSTR_0xD8 (CLD, 2)
 #define OP_INSTR_0xF8 (SED, 2)
 
-#define OP_INSTR_0x1C (NOP_, 4) /*5?*/
-#define OP_INSTR_0x3C (NOP_, 4) /*5?*/
-#define OP_INSTR_0x5C (NOP_, 4) /*5?*/
-#define OP_INSTR_0x7C (NOP_, 4) /*5?*/
-#define OP_INSTR_0x9C (SHY_, 4) /*5?*/
+#define OP_INSTR_0x1C (NOP_, 4) /*+1 if page crossed*/
+#define OP_INSTR_0x3C (NOP_, 4) /*+1 if page crossed*/
+#define OP_INSTR_0x5C (NOP_, 4) /*+1 if page crossed*/
+#define OP_INSTR_0x7C (NOP_, 4) /*+1 if page crossed*/
+#define OP_INSTR_0x9C (SHY_, 4) /*5?*/ // Sometimes the page cross may not work
 #define OP_INSTR_0xBC (LDY, 4)  /*+1 if page crossed*/
-#define OP_INSTR_0xDC (NOP_, 4) /*5?*/
-#define OP_INSTR_0xFC (NOP_, 4) /*5?*/
+#define OP_INSTR_0xDC (NOP_, 4) /*+1 if page crossed*/
+#define OP_INSTR_0xFC (NOP_, 4) /*+1 if page crossed*/
 
 ///////////////////////////////////////////////////////////
 #define OP_INSTR_0x01 (ORA, 6)
