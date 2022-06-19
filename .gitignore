@@ -33,6 +33,6 @@
 
 build*
 cmake-build*
-
+*.nes
 
 
