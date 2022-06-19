@@ -5,11 +5,6 @@
 #include "rom.h"
 #include "mappers/mapper0.h"
 void test_snake(void);
-
-void print_current_instr(struct nescpu *cpu) {
-    printf("%04X  %s\n", cpu->pc, opcode_nametable[bus_read8(cpu->bus, cpu->pc)]);
-}
-void dump_cpu(struct nescpu *cpu);
 int main(int argc, const char *const argv[]) {
 #if 0
     print_cpu_opcode_nametable(); 
@@ -28,8 +23,6 @@ int main(int argc, const char *const argv[]) {
 #endif 
     struct nescpu cpu;
     struct nesbus bus;
-    // bool dummy;
-    // printf("test compute addr %d\n", cpu_compute_address(&cpu, MODE_IMP, 0, &dummy));
     
     size_t datasize = 0;
     uint8_t *rom_data = load_file("../testroms/nestest.nes", &datasize);
@@ -37,8 +30,6 @@ int main(int argc, const char *const argv[]) {
     if (load_rom_from_ines_data(&bus, rom_data, datasize) < 0) {
         panic("Load failed\n"); 
     }
-    // printf("bus.PRG_reader = %p, NROM_read_PRG = %p\n", bus.PRG_reader, NROM_read_PRG);
-    // printf("%u\n", (unsigned)NROM_read_PRG(bus.rom, 0x8000));
     assert(bus.PRG_reader == NROM_read_PRG);
     cpu_init(&cpu, &bus);
     cpu_reset(&cpu);

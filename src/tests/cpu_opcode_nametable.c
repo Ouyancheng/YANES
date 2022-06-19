@@ -12,7 +12,12 @@
  * Then do the other rows ...
  * You can also slightly fix the rows to make it a bit shorter, like this ...
  */
-
+#define USE_ISB 1
+#if USE_ISB
+    #define _ISC_ "ISB"
+#else 
+    #define _ISC_ "ISC"
+#endif 
 // note: this is a table having 256 entries with 4 bytes each. 
 const char opcode_nametable[256][4] = {
     "BRK","ORA","STP","SLO","NOP","ORA","ASL","SLO","PHP","ORA","ASL","ANC","NOP","ORA","ASL","SLO",//0x00+
@@ -29,8 +34,8 @@ const char opcode_nametable[256][4] = {
     "BCS","LDA","STP","LAX","LDY","LDA","LDX","LAX","CLV","LDA","TSX","LAS","LDY","LDA","LDX","LAX",//0xB0+
     "CPY","CMP","NOP","DCP","CPY","CMP","DEC","DCP","INY","CMP","DEX","AXS","CPY","CMP","DEC","DCP",//0xC0+
     "BNE","CMP","STP","DCP","NOP","CMP","DEC","DCP","CLD","CMP","NOP","DCP","NOP","CMP","DEC","DCP",//0xD0+
-    "CPX","SBC","NOP","ISC","CPX","SBC","INC","ISC","INX","SBC","NOP","SBC","CPX","SBC","INC","ISC",//0xE0+
-    "BEQ","SBC","STP","ISC","NOP","SBC","INC","ISC","SED","SBC","NOP","ISC","NOP","SBC","INC","ISC",//0xF0+
+    "CPX","SBC","NOP",_ISC_,"CPX","SBC","INC",_ISC_,"INX","SBC","NOP","SBC","CPX","SBC","INC",_ISC_,//0xE0+
+    "BEQ","SBC","STP",_ISC_,"NOP","SBC","INC",_ISC_,"SED","SBC","NOP",_ISC_,"NOP","SBC","INC",_ISC_,//0xF0+
 
 };
 

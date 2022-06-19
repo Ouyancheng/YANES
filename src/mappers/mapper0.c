@@ -9,12 +9,12 @@ uint8_t NROM_read_PRG(struct nesrom *rom, uint16_t addr) {
     return *(rom->rom_data + rom->PRG_rom_offset + addr);
 }
 void NROM_write_PRG(struct nesrom *rom, uint16_t addr, uint8_t value) {
-    panic("writing to PRG rom\n");
+    return;
 }
 uint8_t NROM_read_CHR(struct nesrom *rom, uint16_t addr) {
     return *(rom->rom_data + rom->PRG_rom_offset + rom->PRG_rom_size + addr);
 }
 void NROM_write_CHR(struct nesrom *rom, uint16_t addr, uint8_t value) {
-    panic("writing to CHR rom\n");
+    return;
 }
 

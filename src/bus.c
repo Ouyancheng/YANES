@@ -13,8 +13,10 @@ uint8_t bus_read8(struct nesbus *bus, uint16_t addr) {
     } else if (addr < 0x4000) {
         addr = 0x2000 + ((addr - 0x2000) % 8);
         // ppu_read8
+        /// TODO: PPU 
         return 0xff;
     } else if (addr < 0x4018) { // APU registers and IO registers 
+        /// TODO: APU and controller
         return 0xff;
     } else { // Cartridge space 
         return (*(bus->PRG_reader))(bus->rom, addr); 
@@ -27,7 +29,9 @@ void bus_write8(struct nesbus *bus, uint16_t addr, uint8_t value) {
     } else if (addr < 0x4000) {
         addr = 0x2000 + ((addr - 0x2000) % 8);
         // ppu_write8
+        /// TODO: PPU
     } else if (addr < 0x4018) { // APU registers and IO registers 
+        /// TODO: APU and controller 
     } else { // Cartridge space 
         (*(bus->PRG_writer))(bus->rom, addr, value); 
     }
@@ -39,8 +43,10 @@ uint8_t bus_peek8(struct nesbus *bus, uint16_t addr) {
     } else if (addr < 0x4000) {
         addr = 0x2000 + ((addr - 0x2000) % 8);
         // ppu_peek8
+        /// TODO: PPU
         return 0xff;
     } else if (addr < 0x4018) { // APU registers and IO registers 
+        /// TODO: APU and controller 
         return 0xff;
     } else { // Cartridge space 
         return (*(bus->PRG_reader))(bus->rom, addr); 
