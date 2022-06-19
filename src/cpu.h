@@ -44,7 +44,7 @@ enum cpu_flags {
 #define CPU_NMI_VECTOR UINT16_C(0xFFFA)
 #define CPU_STACK_OFFSET UINT16_C(0x0100) 
 
-void cpu_init(struct nescpu *cpu); 
+void cpu_init(struct nescpu *cpu, struct nesbus *bus); 
 void cpu_copy(struct nescpu *to_cpu, const struct nescpu *cpu); 
 void cpu_reset(struct nescpu *cpu); 
 int cpu_single_step(struct nescpu *cpu); 

@@ -22,6 +22,8 @@ set(PROJECT_C_FILES
     src/rom.c
     src/sdk.c
     src/mappers/mapper0.c
+    src/tests/cpu_opcodes.c
+    src/tests/dump_cpu.c
     # src/tests/testsnakegame.c
 )
 set(CMAKE_C_STANDARD 11)

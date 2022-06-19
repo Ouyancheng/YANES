@@ -350,14 +350,26 @@ enum addressmode {
     addr = indirect_ref; } while (0)
 #define GETADDR_MODE_INX(addr, cpu, ptr, page_crossed) do {\
     uint8_t base = cpu_read8(cpu, ptr); \
-    base += cpu->x;\
-    addr = cpu_read16(cpu, (uint16_t)base); } while (0)
+    uint8_t ptr1 = (base + cpu->x) & 0xff; \
+    uint8_t lo = cpu_read8(cpu, ptr1); \
+    uint8_t hi = cpu_read8(cpu, (ptr1+1) & 0xff); \
+    addr = (((uint16_t)hi) << 8) | (uint16_t)lo; } while (0)
+/// NOTE: please do NOT use the following, because base is uint8, and base+1 may overflow! 
+/// cpu_read16 promotes base to uint16 so overflow will NOT occur!!!
+    // uint8_t base = cpu_read8(cpu, ptr); \
+    // base += cpu->x;\
+    // addr = cpu_read16(cpu, (uint16_t)base); } while (0)
 #define GETADDR_MODE_INY(addr, cpu, ptr, page_crossed) do {\
-    uint16_t base = cpu_read16(cpu, (uint16_t)cpu_read8(cpu, ptr)); \
-    addr = base + cpu->y; \
-    page_crossed = check_page_crossed(base, addr); } while (0)
+    uint8_t base = cpu_read8(cpu, ptr); \
+    uint8_t lo = cpu_read8(cpu, base); \
+    uint8_t hi = cpu_read8(cpu, (base+1) & 0xff); \
+    uint16_t base2 = ((((uint16_t)hi) << 8) | (uint16_t)lo); \
+    addr = base2 + (uint16_t)cpu->y; \
+    page_crossed = check_page_crossed(base2, addr); } while (0)
 
-
+// uint16_t base = cpu_read16(cpu, (uint16_t)cpu_read8(cpu, ptr)); \
+//     addr = base + cpu->y; \
+//     page_crossed = check_page_crossed(base, addr); } while (0)
 
 
 #define GETLENGTH_MODE_IMP 1

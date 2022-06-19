@@ -11,7 +11,7 @@ int panic_at(const char *file, int line, const char *function, const char *forma
     return n; 
 }
 
-uint8_t *load_file(const char *filepath) {
+uint8_t *load_file(const char *filepath, size_t *datasize) {
     FILE *romfile = fopen(filepath, "rb"); 
     if (!romfile) {
         printf("romfile not found!\n"); 
@@ -32,9 +32,12 @@ uint8_t *load_file(const char *filepath) {
         return NULL;
     }
     fclose(romfile);
+    *datasize = romsize;
     return data;
 }
-
+void deallocate_filedata(uint8_t *data) {
+    deallocate_memory(data);
+}
 void *allocate_memory(size_t size) {
     return malloc(size);
 }
