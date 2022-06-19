@@ -66,12 +66,13 @@ int load_rom_from_ines_data(struct nesbus *bus, uint8_t *data, size_t data_size)
 }
 
 
-void rom_deallocate(struct nesrom *rom) {
-    if (!rom) return;
-    if (rom->rom_data) {
-        deallocate_filedata(rom->rom_data);
+void unload_rom(struct nesbus *bus) {
+    if (!bus->rom) return;
+    if (bus->rom->rom_data) {
+        deallocate_filedata(bus->rom->rom_data);
     }
-    deallocate_memory(rom); 
+    deallocate_memory(bus->rom); 
+    bus->rom = NULL;
 }
 
 

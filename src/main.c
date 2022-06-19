@@ -35,7 +35,7 @@ int main(int argc, const char *const argv[]) {
     cpu_reset(&cpu);
     cpu.pc = 0xC000; // hack, only for the testrom!!!
     cpu_run(&cpu, dump_cpu);
-    
+    unload_rom(&bus);
     
     return 0; 
 }
