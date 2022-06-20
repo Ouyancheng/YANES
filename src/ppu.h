@@ -30,10 +30,7 @@ struct nesppu {
     uint8_t iobus_last_value;
     uint8_t vmembus_last_value; 
 
-    uint8_t *nametable0;
-    uint8_t *nametable1;
-    uint8_t *nametable2;
-    uint8_t *nametable3;
+    uint8_t *nametables[4];
     
     uint8_t palette_ram[32];
     uint8_t oamdata[256];

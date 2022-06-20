@@ -17,10 +17,10 @@ void ppu_init(struct nesppu *ppu) {
     memset(ppu->vram, 0, 2048);
 
     ppu->mirroring = MIRROR_HORI;
-    ppu->nametable0 = (uint8_t*)(ppu->vram);
-    ppu->nametable1 = (uint8_t*)(ppu->vram);
-    ppu->nametable2 = (uint8_t*)(ppu->vram) + 1024;
-    ppu->nametable3 = (uint8_t*)(ppu->vram) + 1024;
+    ppu->nametables[0] = (uint8_t*)(ppu->vram);
+    ppu->nametables[1] = (uint8_t*)(ppu->vram);
+    ppu->nametables[2] = (uint8_t*)(ppu->vram) + 1024;
+    ppu->nametables[3] = (uint8_t*)(ppu->vram) + 1024;
 
     ppu->CHR_reader = NULL;
     ppu->CHR_writer = NULL; 
@@ -42,17 +42,17 @@ void ppu_set_nametable_mirror(struct nesppu *ppu, enum nametable_mirror mirrorin
     switch (mirroring) {
         case MIRROR_FOUR:
         case MIRROR_VERT:
-            ppu->nametable0 = (uint8_t*)(ppu->vram);
-            ppu->nametable1 = (uint8_t*)(ppu->vram) + 1024;
-            ppu->nametable2 = (uint8_t*)(ppu->vram);
-            ppu->nametable3 = (uint8_t*)(ppu->vram) + 1024;
+            ppu->nametables[0] = (uint8_t*)(ppu->vram);
+            ppu->nametables[1] = (uint8_t*)(ppu->vram) + 1024;
+            ppu->nametables[2] = (uint8_t*)(ppu->vram);
+            ppu->nametables[3] = (uint8_t*)(ppu->vram) + 1024;
             ppu->mirroring = mirroring;
             break;
         case MIRROR_HORI:
-            ppu->nametable0 = (uint8_t*)(ppu->vram);
-            ppu->nametable1 = (uint8_t*)(ppu->vram);
-            ppu->nametable2 = (uint8_t*)(ppu->vram) + 1024;
-            ppu->nametable3 = (uint8_t*)(ppu->vram) + 1024;
+            ppu->nametables[0] = (uint8_t*)(ppu->vram);
+            ppu->nametables[1] = (uint8_t*)(ppu->vram);
+            ppu->nametables[2] = (uint8_t*)(ppu->vram) + 1024;
+            ppu->nametables[3] = (uint8_t*)(ppu->vram) + 1024;
             ppu->mirroring = mirroring;
             break;
         default: 
@@ -90,6 +90,7 @@ uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
         case 0x2006: OPEN_IOBUS_READ("ppu addr"); /// PPUADDR 
         case 0x2007: /// PPUDATA
             value = ppu_internal_read8(ppu, ppu->addr); 
+            /// TODO: Increment PPU's internal address!
             break;
         case 0x4014: OPEN_IOBUS_READ("ppu OAMDMA"); /// OAMDMA
         default: 
@@ -134,6 +135,7 @@ void ppu_external_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
             break;
         case 0x2007: /// PPUDATA
             ppu_internal_write8(ppu, ppu->addr, value);
+            /// TODO: Increment PPU's internal address!
             break;
         case 0x4014: /// OAMDMA
             /// TODO: implement this 
@@ -184,10 +186,31 @@ uint8_t ppu_external_peek8(struct nesppu *ppu, uint16_t addr) {
 /// see this for the open bus behaviour https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
 uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
     /// TODO: implement this
-    return 0xFF;
+    if (addr < 0x2000) {
+        uint8_t result = ppu->data_read_buffer;
+        ppu->data_read_buffer = ppu->CHR_reader(ppu, ppu->rom, addr);
+    } 
+    else if (addr < 0x3F00) {
+        addr &= UINT16_C(0xefff);
+        uint8_t result = ppu->data_read_buffer;
+        unsigned nametable_index = (addr - 0x2000) / 0x0400;
+        ppu->data_read_buffer = ppu->nametables[nametable_index][addr - (0x2000 + 0x0400 * nametable_index)];
+        return result;
+    }
+    else {
+        uint8_t result;
+        uint16_t palette_addr = (addr - UINT16_C(0x3f00)) % UINT16_C(32); // addr = 0x3f00 - 0x3f1f 
+        if (palette_addr == 0x10 || palette_addr == 0x14 || palette_addr == 0x18 || palette_addr == 0x1c) {
+            result = ppu->palette_ram[palette_addr-0x10]; 
+        } else {
+            result = ppu->palette_ram[palette_addr]; 
+        }
+        return result;
+    }
 }
 void ppu_internal_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
     /// TODO: implement this
+    
 }
 
 
