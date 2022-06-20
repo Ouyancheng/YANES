@@ -26,8 +26,8 @@ struct nescpu {
     uint8_t cpu_bus_last_value;
     uint16_t pc; 
     struct nesrom *rom;
-    mapper_reader_t PRG_reader;
-    mapper_writer_t PRG_writer;
+    PRG_reader_t PRG_reader;
+    PRG_writer_t PRG_writer;
     struct nesppu *ppu;
     /// CPU ram
     uint8_t ram[2048];
@@ -83,16 +83,14 @@ uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr);
 void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value);
 
 inline uint16_t cpu_peek16(struct nescpu *cpu, uint16_t addr) {
-    return (
-        ((uint16_t)cpu_peek8(cpu, addr)) | 
-        (((uint16_t)cpu_peek8(cpu, addr+1)) << 8)
-    );
+    uint16_t lo = (uint16_t)cpu_peek8(cpu, addr);
+    uint16_t hi = (((uint16_t)cpu_peek8(cpu, addr+1)) << 8);
+    return (lo | hi);
 }
 inline uint16_t cpu_read16(struct nescpu *cpu, uint16_t addr) {
-    return (
-        ((uint16_t)cpu_read8(cpu, addr)) | 
-        (((uint16_t)cpu_read8(cpu, addr+1)) << 8)
-    );
+    uint16_t lo = (uint16_t)cpu_read8(cpu, addr);
+    uint16_t hi = (((uint16_t)cpu_read8(cpu, addr+1)) << 8);
+    return (lo | hi);
 }
 inline void cpu_write16(struct nescpu *cpu, uint16_t addr, uint16_t value) {
     cpu_write8(cpu, addr,   (uint8_t)(value & 0xFF));

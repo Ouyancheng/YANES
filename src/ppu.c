@@ -33,17 +33,18 @@ void ppu_reset(struct nesppu *ppu) {
     ppu->addr_latching_lsb = false;
     ppu->data_read_buffer = 0;
 }
-#define PANIC_ON_OPEN_BUS_READ 1
+#define PANIC_ON_OPEN_BUS_READ 0
 #if PANIC_ON_OPEN_BUS_READ
-#define OPEN_BUS_READ(reg) do { panic(reg " is an open bus read\n"); return 0xFF; } while (0)
+#define OPEN_IOBUS_READ(reg) do { panic(reg " is an open bus read\n"); return 0xFF; } while (0)
 #else 
-#define OPEN_BUS_READ(reg) return 0
+#define OPEN_IOBUS_READ(reg) return ppu->iobus_last_value
 #endif 
 /// see: https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus for how to handle open bus reads
 uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
+    uint8_t value;
     switch (addr) {
-        case 0x2000: OPEN_BUS_READ("ppu control"); /// PPUCTRL
-        case 0x2001: OPEN_BUS_READ("ppu mask"); /// PPUMASK
+        case 0x2000: OPEN_IOBUS_READ("ppu control"); /// PPUCTRL
+        case 0x2001: OPEN_IOBUS_READ("ppu mask"); /// PPUMASK
         case 0x2002: /// PPUSTATUS
         {   /// some quirks 
         /// see: https://www.nesdev.org/wiki/PPU_registers Status ($2002) < read
@@ -51,23 +52,29 @@ uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
             ppu->status = set_mask(ppu->status, PPUSTATUS_VBLANK_STARTED, false);
             ppu->addr_latching_lsb = false;
             ppu->scroll_latching_y = false;
-            return stat;
+            value = (stat | (ppu->iobus_last_value & 0b00011111)); // see the open bus read
+            break;
         }
-        case 0x2003: OPEN_BUS_READ("ppu OAMADDR"); /// OAMADDR
+        case 0x2003: OPEN_IOBUS_READ("ppu OAMADDR"); /// OAMADDR
         case 0x2004: /// OAMDATA
-            return ppu->oamdata[ppu->oamaddr];
-        case 0x2005: OPEN_BUS_READ("ppu scroll"); /// PPUSCROLL
-        case 0x2006: OPEN_BUS_READ("ppu addr"); /// PPUADDR 
+            value = ppu->oamdata[ppu->oamaddr];
+            break;
+        case 0x2005: OPEN_IOBUS_READ("ppu scroll"); /// PPUSCROLL
+        case 0x2006: OPEN_IOBUS_READ("ppu addr"); /// PPUADDR 
         case 0x2007: /// PPUDATA
-            return ppu_internal_read8(ppu, ppu->addr); 
-        case 0x4014: OPEN_BUS_READ("ppu OAMDMA"); /// OAMDMA
+            value = ppu_internal_read8(ppu, ppu->addr); 
+            break;
+        case 0x4014: OPEN_IOBUS_READ("ppu OAMDMA"); /// OAMDMA
         default: 
             panic("address %04X does not belong to PPU\n", addr);
             return 0xFF;
     }
+    ppu->iobus_last_value = value;
+    return value;
 }
 /// https://www.nesdev.org/wiki/PPU_registers
 void ppu_external_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
+    ppu->iobus_last_value = value;
     switch (addr) {
         case 0x2000: /// PPUCTRL
             /// TODO: this is not exactly right, there are more stuffs to do 
@@ -77,7 +84,7 @@ void ppu_external_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
             ppu->mask = value;
             break;
         case 0x2002: /// PPUSTATUS
-            panic("ppu status is not writable\n");
+            // panic("ppu status is not writable\n");
             break;
         case 0x2003: /// OAMADDR
             ppu->oamaddr = value;
@@ -142,12 +149,18 @@ uint8_t ppu_external_peek8(struct nesppu *ppu, uint16_t addr) {
 }
 
 
-
+#if PANIC_ON_OPEN_BUS_READ
+#define OPEN_VMEMBUS_READ(reg) do { panic(reg " is an open bus read\n"); return 0xFF; } while (0)
+#else 
+#define OPEN_VMEMBUS_READ(reg) return (addr & 0xFF)
+#endif 
+/// see this for the open bus behaviour https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
 uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
+    /// TODO: implement this
     return 0xFF;
 }
 void ppu_internal_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
-
+    /// TODO: implement this
 }
 
 

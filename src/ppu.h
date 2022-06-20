@@ -24,8 +24,8 @@ struct nesppu {
     
 
     struct nesrom *rom;
-    mapper_reader_t CHR_reader;
-    mapper_writer_t CHR_writer; 
+    CHR_reader_t CHR_reader;
+    CHR_writer_t CHR_writer; 
     
     uint8_t iobus_last_value;
     uint8_t vmembus_last_value; 
