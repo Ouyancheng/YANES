@@ -90,9 +90,11 @@ uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
         case 0x2006: OPEN_IOBUS_READ("ppu addr"); /// PPUADDR 
         case 0x2007: /// PPUDATA
             value = ppu_internal_read8(ppu, ppu->addr); 
-            /// TODO: Increment PPU's internal address!
+            /// NOTE:: Increment PPU's internal address!
+            ppu->addr += ((ppu->ctrl & PPUCTRL_VRAM_ADDR_INCREMENT) ? 32 : 1);
+            ppu->addr &= 0x3FFF;
             break;
-        case 0x4014: OPEN_IOBUS_READ("ppu OAMDMA"); /// OAMDMA
+        // case 0x4014: OPEN_IOBUS_READ("ppu OAMDMA"); /// OAMDMA
         default: 
             panic("address %04X does not belong to PPU\n", addr);
             return 0xFF;
@@ -135,9 +137,11 @@ void ppu_external_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
             break;
         case 0x2007: /// PPUDATA
             ppu_internal_write8(ppu, ppu->addr, value);
-            /// TODO: Increment PPU's internal address!
+            /// NOTE: Increment PPU's internal address!
+            ppu->addr += ((ppu->ctrl & PPUCTRL_VRAM_ADDR_INCREMENT) ? 32 : 1);
+            ppu->addr &= 0x3FFF;
             break;
-        case 0x4014: /// OAMDMA
+        // case 0x4014: /// OAMDMA
             /// TODO: implement this 
             /// The CPU is suspended during the DMA 
             /// and it only copies a page to the oam memory
@@ -145,7 +149,7 @@ void ppu_external_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
             /// (1 wait state cycle while waiting for writes to complete, 
             /// +1 if on an odd CPU cycle, 
             /// then 256 alternating read/write cycles.)
-            break;
+            // break;
         default: 
             panic("address %04X does not belong to PPU\n", addr);
             break;
@@ -170,8 +174,8 @@ uint8_t ppu_external_peek8(struct nesppu *ppu, uint16_t addr) {
             return ppu->addr_latching_lsb ? ppu->addr : ppu->addr >> 8;
         case 0x2007: /// PPUDATA
             return 0;
-        case 0x4014: /// OAMDMA
-            return 0;
+        // case 0x4014: /// OAMDMA
+        //     return 0;
         default: panic("address %04X does not belong to PPU\n", addr);
             return 0xFF;
     }
@@ -216,6 +220,22 @@ uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
 void ppu_internal_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
     /// TODO: implement this
     addr &= 0x3FFF;
+    if (addr < 0x2000) {
+        ppu->CHR_writer(ppu, ppu->rom, addr, value);
+    } 
+    else if (addr < 0x3F00) {
+        addr &= UINT16_C(0x2fff);
+        unsigned nametable_index = (addr - 0x2000) / 0x0400;
+        ppu->nametables[nametable_index][addr - (0x2000 + 0x0400 * nametable_index)] = value;
+    }
+    else {
+        uint16_t palette_addr = (addr - UINT16_C(0x3f00)) % UINT16_C(32); // addr = 0x3f00 - 0x3f1f 
+        if (palette_addr == 0x10 || palette_addr == 0x14 || palette_addr == 0x18 || palette_addr == 0x1c) {
+            ppu->palette_ram[palette_addr-0x10] = value; 
+        } else {
+            ppu->palette_ram[palette_addr] = value; 
+        }
+    }
 }
 
 

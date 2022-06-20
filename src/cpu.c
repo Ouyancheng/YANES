@@ -38,6 +38,7 @@ uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
     uint8_t value;
     if (addr < 0x2000) {
         value = cpu->ram[addr % 0x0800]; // note: 0x0800 = 2048
+        cpu->cpu_bus_last_value = value;
     } else if (addr < 0x4000) {
         addr = 0x2000 + ((addr - 0x2000) % 8);
         value = ppu_external_read8(cpu->ppu, addr);
@@ -45,27 +46,30 @@ uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
         /// APU registers and IO registers 
         /// TODO: APU and controller
         value = 0xff;
+        cpu->cpu_bus_last_value = value;
     } else { 
         /// Cartridge space 
         value = (*(cpu->PRG_reader))(cpu, cpu->ppu, cpu->rom, addr); 
+        cpu->cpu_bus_last_value = value;
     }
-    cpu->cpu_bus_last_value = value;
     return value;
 }
 void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value) {
-    cpu->cpu_bus_last_value = value;
     if (addr < 0x2000) {
         cpu->ram[addr % 0x0800] = value; 
+        cpu->cpu_bus_last_value = value;
     } else if (addr < 0x4000) {
         addr = 0x2000 + ((addr - 0x2000) % 8);
         ppu_external_write8(cpu->ppu, addr, value);
     } else if (addr < 0x4018) { 
         /// APU registers and IO registers 
         /// TODO: APU and controller 
+        cpu->cpu_bus_last_value = value;
         return;
     } else { 
         /// Cartridge space 
         (*(cpu->PRG_writer))(cpu, cpu->ppu, cpu->rom, addr, value); 
+        cpu->cpu_bus_last_value = value;
     }
 }
 
