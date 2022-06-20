@@ -34,14 +34,14 @@ struct nesppu {
 };
 
 enum ppu_status_flags {
-    ppu_status_unused1         = 0b00000001,
-    ppu_status_unused2         = 0b00000010,
-    ppu_status_unused3         = 0b00000100,
-    ppu_status_unused4         = 0b00001000,
-    ppu_status_unused5         = 0b00010000,
-    ppu_status_sprite_overflow = 0b00100000,
-    ppu_status_sprite_zero_hit = 0b01000000,
-    ppu_status_vblank_started  = 0b10000000 
+    PPUSTATUS_UNUSED1         = 0b00000001,
+    PPUSTATUS_UNUSED2         = 0b00000010,
+    PPUSTATUS_UNUSED3         = 0b00000100,
+    PPUSTATUS_UNUSED4         = 0b00001000,
+    PPUSTATUS_UNUSED5         = 0b00010000,
+    PPUSTATUS_SPRITE_OVERFLOW = 0b00100000,
+    PPUSTATUS_SPRITE_ZERO_HIT = 0b01000000,
+    PPUSTATUS_VBLANK_STARTED  = 0b10000000 
 };
 
 void ppu_init(struct nesppu *ppu);

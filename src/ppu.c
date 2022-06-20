@@ -20,7 +20,7 @@ void ppu_init(struct nesppu *ppu) {
     ppu->CHR_reader = NULL;
     ppu->CHR_writer = NULL; 
     ppu->rom = NULL;
-    
+
     ppu->iobus_last_value = 0;
     ppu->vmembus_last_value = 0;
 }
@@ -47,7 +47,7 @@ uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
         {   /// some quirks 
         /// see: https://www.nesdev.org/wiki/PPU_registers Status ($2002) < read
             uint8_t stat = ppu->status;
-            ppu->status = set_mask(ppu->status, ppu_status_vblank_started, false);
+            ppu->status = set_mask(ppu->status, PPUSTATUS_VBLANK_STARTED, false);
             ppu->addr_latching_lsb = false;
             ppu->scroll_latching_y = false;
             return stat;
