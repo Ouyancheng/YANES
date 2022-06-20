@@ -42,7 +42,7 @@ uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
     } else if (addr < 0x4000) {
         addr = 0x2000 + ((addr - 0x2000) % 8);
         value = ppu_external_read8(cpu->ppu, addr);
-    } else if (addr < 0x4018) { 
+    } else if (addr < 0x4020) { 
         /// APU registers and IO registers 
         /// TODO: APU and controller
         value = 0xff;
@@ -61,7 +61,7 @@ void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value) {
     } else if (addr < 0x4000) {
         addr = 0x2000 + ((addr - 0x2000) % 8);
         ppu_external_write8(cpu->ppu, addr, value);
-    } else if (addr < 0x4018) { 
+    } else if (addr < 0x4020) { 
         /// APU registers and IO registers 
         /// TODO: APU and controller 
         cpu->cpu_bus_last_value = value;
@@ -79,7 +79,7 @@ uint8_t cpu_peek8(struct nescpu *cpu, uint16_t addr) {
     } else if (addr < 0x4000) {
         addr = 0x2000 + ((addr - 0x2000) % 8);
         return ppu_external_peek8(cpu->ppu, addr);
-    } else if (addr < 0x4018) { 
+    } else if (addr < 0x4020) { 
         /// APU registers and IO registers 
         /// TODO: APU and controller 
         return 0xff;

@@ -190,7 +190,7 @@ uint8_t ppu_external_peek8(struct nesppu *ppu, uint16_t addr) {
 /// see this for the open bus behaviour https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
 uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
     addr &= 0x3FFF;
-    /// TODO: implement this
+    /// NOTE: verify this
     if (addr < 0x2000) {
         uint8_t result = ppu->data_read_buffer;
         ppu->data_read_buffer = ppu->CHR_reader(ppu, ppu->rom, addr);
@@ -219,7 +219,7 @@ uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
     }
 }
 void ppu_internal_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
-    /// TODO: implement this
+    /// NOTE: verify this
     addr &= 0x3FFF;
     if (addr < 0x2000) {
         ppu->CHR_writer(ppu, ppu->rom, addr, value);
