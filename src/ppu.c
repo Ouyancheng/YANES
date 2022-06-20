@@ -39,6 +39,7 @@ void ppu_reset(struct nesppu *ppu) {
 #else 
 #define OPEN_BUS_READ(reg) return 0
 #endif 
+/// see: https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus for how to handle open bus reads
 uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
     switch (addr) {
         case 0x2000: OPEN_BUS_READ("ppu control"); /// PPUCTRL
