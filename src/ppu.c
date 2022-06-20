@@ -185,13 +185,14 @@ uint8_t ppu_external_peek8(struct nesppu *ppu, uint16_t addr) {
 #endif 
 /// see this for the open bus behaviour https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
 uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
+    addr &= 0x3FFF;
     /// TODO: implement this
     if (addr < 0x2000) {
         uint8_t result = ppu->data_read_buffer;
         ppu->data_read_buffer = ppu->CHR_reader(ppu, ppu->rom, addr);
     } 
     else if (addr < 0x3F00) {
-        addr &= UINT16_C(0xefff);
+        addr &= UINT16_C(0x2fff);
         uint8_t result = ppu->data_read_buffer;
         unsigned nametable_index = (addr - 0x2000) / 0x0400;
         ppu->data_read_buffer = ppu->nametables[nametable_index][addr - (0x2000 + 0x0400 * nametable_index)];
@@ -201,7 +202,7 @@ uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
         uint8_t result;
         /// Reading the palettes still updates the internal buffer though, 
         /// but the data placed in it is the mirrored nametable data that would appear "underneath" the palette.
-        uint16_t nametable_mirror_addr = addr & UINT16_C(0xefff);
+        uint16_t nametable_mirror_addr = addr & UINT16_C(0x2fff);
         ppu->data_read_buffer = ppu->nametables[3][nametable_mirror_addr - 0x2C00];
         uint16_t palette_addr = (addr - UINT16_C(0x3f00)) % UINT16_C(32); // addr = 0x3f00 - 0x3f1f 
         if (palette_addr == 0x10 || palette_addr == 0x14 || palette_addr == 0x18 || palette_addr == 0x1c) {
@@ -214,7 +215,7 @@ uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
 }
 void ppu_internal_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
     /// TODO: implement this
-    
+    addr &= 0x3FFF;
 }
 
 
