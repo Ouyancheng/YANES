@@ -23,10 +23,10 @@ int main(int argc, const char *const argv[]) {
 #endif 
     struct nescpu cpu;
     struct nesbus bus;
-    
+    struct nesppu ppu;
     size_t datasize = 0;
     uint8_t *rom_data = load_file("../testroms/nestest.nes", &datasize);
-    bus_init(&bus);
+    bus_init(&bus, &ppu);
     if (load_rom_from_ines_data(&bus, rom_data, datasize) < 0) {
         panic("Load failed\n"); 
     }

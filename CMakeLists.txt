@@ -19,6 +19,7 @@ set(PROJECT_C_FILES
     # src/tests/cpu_opcode_nametable.c
     src/cpu.c
     src/main.c
+    src/ppu.c
     src/rom.c
     src/sdk.c
     src/mappers/mapper0.c

@@ -31,4 +31,11 @@ void deallocate_filedata(uint8_t *data);
 void *allocate_memory(size_t size);
 void deallocate_memory(void *ptr);
 
-
+inline uint8_t set_mask(uint8_t reg, uint8_t mask) {
+    reg |= mask; 
+    return reg; 
+}
+inline uint8_t clear_mask(uint8_t reg, uint8_t mask) {
+    reg &= (~mask); 
+    return reg; 
+}
