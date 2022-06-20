@@ -199,6 +199,10 @@ uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
     }
     else {
         uint8_t result;
+        /// Reading the palettes still updates the internal buffer though, 
+        /// but the data placed in it is the mirrored nametable data that would appear "underneath" the palette.
+        uint16_t nametable_mirror_addr = addr & UINT16_C(0xefff);
+        ppu->data_read_buffer = ppu->nametables[3][nametable_mirror_addr - 0x2C00];
         uint16_t palette_addr = (addr - UINT16_C(0x3f00)) % UINT16_C(32); // addr = 0x3f00 - 0x3f1f 
         if (palette_addr == 0x10 || palette_addr == 0x14 || palette_addr == 0x18 || palette_addr == 0x1c) {
             result = ppu->palette_ram[palette_addr-0x10]; 
