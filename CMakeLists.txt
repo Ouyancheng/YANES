@@ -14,16 +14,15 @@ set(PROJECT_INCLUDE_DIRS
 )
 # message(STATUS "INCLUDE_DIRS=${PROJECT_INCLUDE_DIRS}")
 set(PROJECT_C_FILES
-    src/bus.c
-    src/cpu_exec.c
-    # src/tests/cpu_opcode_nametable.c
     src/cpu.c
+    src/cpu_exec.c
     src/main.c
     src/ppu.c
-    src/rom.c
     src/sdk.c
+    src/system.c
     src/mappers/mapper0.c
     src/dump_cpu.c
+    # src/tests/cpu_opcode_nametable.c
     # src/tests/cpu_opcodes.c
     # src/tests/dump_cpu.c
     # src/tests/testsnakegame.c

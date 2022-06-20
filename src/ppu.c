@@ -1,7 +1,7 @@
 #include "ppu.h"
-#include "bus.h"
+#include "cpu.h"
 /// https://www.nesdev.org/wiki/PPU_power_up_state
-void ppu_init(struct nesppu *ppu, struct nesbus *bus) {
+void ppu_init(struct nesppu *ppu) {
     ppu->ctrl = 0;
     ppu->mask = 0;
     ppu->status = 0b10100000;
@@ -12,8 +12,17 @@ void ppu_init(struct nesppu *ppu, struct nesbus *bus) {
     ppu->addr = 0;
     ppu->addr_latching_lsb = false;
     ppu->data_read_buffer = 0;
-    ppu->bus = bus;
+
     memset(ppu->oamdata, 0, 256);
+
+    ppu->mirroring = MIRROR_HORI;
+
+    ppu->CHR_reader = NULL;
+    ppu->CHR_writer = NULL; 
+    ppu->rom = NULL;
+    
+    ppu->iobus_last_value = 0;
+    ppu->vmembus_last_value = 0;
 }
 void ppu_reset(struct nesppu *ppu) {
     ppu->ctrl = 0;
@@ -24,33 +33,33 @@ void ppu_reset(struct nesppu *ppu) {
     ppu->addr_latching_lsb = false;
     ppu->data_read_buffer = 0;
 }
-#define PANIC_ON_INVALID_READ 1
-#if PANIC_ON_INVALID_READ
-#define INVALID_READ(reg) do { panic(reg " is not readable\n"); return 0xFF; } while (0)
+#define PANIC_ON_OPEN_BUS_READ 1
+#if PANIC_ON_OPEN_BUS_READ
+#define OPEN_BUS_READ(reg) do { panic(reg " is an open bus read\n"); return 0xFF; } while (0)
 #else 
-#define INVALID_READ(reg) return 0
+#define OPEN_BUS_READ(reg) return 0
 #endif 
 uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
     switch (addr) {
-        case 0x2000: INVALID_READ("ppu control"); /// PPUCTRL
-        case 0x2001: INVALID_READ("ppu mask"); /// PPUMASK
+        case 0x2000: OPEN_BUS_READ("ppu control"); /// PPUCTRL
+        case 0x2001: OPEN_BUS_READ("ppu mask"); /// PPUMASK
         case 0x2002: /// PPUSTATUS
         {   /// some quirks 
         /// see: https://www.nesdev.org/wiki/PPU_registers Status ($2002) < read
             uint8_t stat = ppu->status;
-            ppu->status = clear_mask(ppu->status, ppu_status_vblank_started);
+            ppu->status = set_mask(ppu->status, ppu_status_vblank_started, false);
             ppu->addr_latching_lsb = false;
             ppu->scroll_latching_y = false;
             return stat;
         }
-        case 0x2003: INVALID_READ("ppu OAMADDR"); /// OAMADDR
+        case 0x2003: OPEN_BUS_READ("ppu OAMADDR"); /// OAMADDR
         case 0x2004: /// OAMDATA
             return ppu->oamdata[ppu->oamaddr];
-        case 0x2005: INVALID_READ("ppu scroll"); /// PPUSCROLL
-        case 0x2006: INVALID_READ("ppu addr"); /// PPUADDR 
+        case 0x2005: OPEN_BUS_READ("ppu scroll"); /// PPUSCROLL
+        case 0x2006: OPEN_BUS_READ("ppu addr"); /// PPUADDR 
         case 0x2007: /// PPUDATA
             return ppu_internal_read8(ppu, ppu->addr); 
-        case 0x4014: INVALID_READ("ppu OAMDMA"); /// OAMDMA
+        case 0x4014: OPEN_BUS_READ("ppu OAMDMA"); /// OAMDMA
         default: 
             panic("address %04X does not belong to PPU\n", addr);
             return 0xFF;

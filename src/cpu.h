@@ -14,16 +14,23 @@
 #pragma once 
 
 #include "sdk.h"
-#include "bus.h"
+#include "ppu.h"
+#include "rom.h"
 struct nescpu {
     uint8_t a; 
     uint8_t x; 
     uint8_t y; 
     uint8_t sp; 
     uint8_t p; // note: there's no break flags in the P register (bit 4 and bit 5)
+    /// this is the value remaining in the bus, aims to support openbus reads
+    uint8_t cpu_bus_last_value;
     uint16_t pc; 
-
-    struct nesbus *bus;
+    struct nesrom *rom;
+    mapper_reader_t PRG_reader;
+    mapper_writer_t PRG_writer;
+    struct nesppu *ppu;
+    /// CPU ram
+    uint8_t ram[2048];
 };
 
 enum cpu_flags {
@@ -44,8 +51,8 @@ enum cpu_flags {
 #define CPU_NMI_VECTOR UINT16_C(0xFFFA)
 #define CPU_STACK_OFFSET UINT16_C(0x0100) 
 
-void cpu_init(struct nescpu *cpu, struct nesbus *bus); 
-void cpu_copy(struct nescpu *to_cpu, const struct nescpu *cpu); 
+void cpu_init(struct nescpu *cpu, struct nesppu *ppu); 
+void cpu_copy(struct nescpu *to_cpu, const struct nescpu *cpu);  /// TODO: implement this
 void cpu_reset(struct nescpu *cpu); 
 int cpu_single_step(struct nescpu *cpu); 
 
@@ -70,16 +77,10 @@ uint16_t cpu_compute_address(struct nescpu *cpu, uint8_t addrmode, uint16_t ptr,
 
 
 /// non-destructively reads a byte from the address addr (are the reads destructive?)
-inline uint8_t cpu_peek8(struct nescpu *cpu, uint16_t addr) {
-    return bus_peek8(cpu->bus, addr); 
-}
+uint8_t cpu_peek8(struct nescpu *cpu, uint16_t addr);
 /// reads a byte from the address addr 
-inline uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
-    return bus_read8(cpu->bus, addr); 
-}
-inline void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value) {
-    bus_write8(cpu->bus, addr, value); 
-}
+uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr);
+void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value);
 
 inline uint16_t cpu_peek16(struct nescpu *cpu, uint16_t addr) {
     return (

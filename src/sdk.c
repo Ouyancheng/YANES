@@ -46,8 +46,8 @@ void deallocate_memory(void *ptr) {
     free(ptr); 
 }
 
-extern inline uint8_t set_mask(uint8_t reg, uint8_t mask);
-extern inline uint8_t clear_mask(uint8_t reg, uint8_t mask);
+extern inline uint8_t set_mask(uint8_t reg, uint8_t mask, bool val);
+
 
 
 

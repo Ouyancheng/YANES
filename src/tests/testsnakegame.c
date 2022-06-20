@@ -1,6 +1,6 @@
 #include "sdk.h"
 #include "SDL2/SDL.h"
-#include "cpu.h"
+#include "system.h"
 static uint8_t snake_game[] = {
     0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
     0x02, 0xa9, 0x04, 0x85, 0x03, 0xa9, 0x11, 0x85, 0x10, 0xa9, 0x10, 0x85, 0x12, 0xa9, 0x0f, 0x85,
@@ -139,6 +139,8 @@ static void callback(struct nescpu *cpu) {
         SDL_Delay(42); 
     }
 }
+struct nessystem snakegame_system;
+uint8_t empty_romdata[0x6010];
 void test_snake(void) {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
         panic("error initializing SDL: %s\n", SDL_GetError());
@@ -164,14 +166,33 @@ void test_snake(void) {
     if (SDL_LockTexture(texture, NULL, (void**)&pixels, &pitch) != 0) {
         panic("failed to lock texture!\n"); 
     } 
-    struct nescpu cpu;
-    cpu_init(&cpu); 
-    for (size_t i = 0; i < sizeof(snake_game); ++i) {
-        cpu_write8(&cpu, UINT16_C(0x0600) + (uint16_t)i, snake_game[i]); 
+    empty_romdata[0] = 'N';
+    empty_romdata[1] = 'E';
+    empty_romdata[2] = 'S';
+    empty_romdata[3] = 0x1A;
+    empty_romdata[4] = 0x01; // PRG = 1 * 16KB
+    empty_romdata[5] = 0x01; // CHR = 1 * 8KB
+    system_init(&snakegame_system);
+    int ret = system_load_rom_ines(&snakegame_system, empty_romdata, 0x6010);
+    if (ret < 0) {
+        panic("failed to load rom!\n");
     }
-    cpu_write16(&cpu, 0xFFFC, 0x0600);
-    cpu_reset(&cpu); 
-    cpu_run(&cpu, callback); 
+    
+    printf("PRG offset=%u PRG size=%u CHR size=%u\n", snakegame_system.rom->PRG_rom_offset, snakegame_system.rom->PRG_rom_size, snakegame_system.rom->CHR_rom_size);
+    for (size_t i = 0; i < sizeof(snake_game); ++i) {
+        cpu_write8(&(snakegame_system.cpu), UINT16_C(0x0600) + (uint16_t)i, snake_game[i]); 
+    }
+    
+    system_test_run(&snakegame_system, 0x0600, callback);
+    /// NOTE: the PRG is NOT writable
+    // cpu_write16(&(snakegame_system.cpu), CPU_RESET_VECTOR, 0x0600);
+    // cpu_reset(&(snakegame_system.cpu)); 
+    // printf("reset vector = %04X cpu.pc = %04X\n", cpu_peek16(&(snakegame_system.cpu), CPU_RESET_VECTOR), snakegame_system.cpu.pc);
+    // cpu_run(&(snakegame_system.cpu), callback); 
+    // cpu_write16(&(snakegame_system.cpu), 0xFFFC, 0x0600);
+    // cpu_reset(&(snakegame_system.cpu)); 
+    // void dump_cpu(struct nescpu *cpu);
+    // cpu_run(&(snakegame_system.cpu), dump_cpu); 
 }
 
 
