@@ -29,8 +29,15 @@ struct nesppu {
     
     uint8_t iobus_last_value;
     uint8_t vmembus_last_value; 
+
+    uint8_t *nametable0;
+    uint8_t *nametable1;
+    uint8_t *nametable2;
+    uint8_t *nametable3;
     
+    uint8_t palette_ram[32];
     uint8_t oamdata[256];
+    uint8_t vram[2048];
 };
 
 enum ppu_status_flags {
@@ -47,6 +54,10 @@ enum ppu_status_flags {
 void ppu_init(struct nesppu *ppu);
 void ppu_reset(struct nesppu *ppu); 
 
+
+
+
+void ppu_set_nametable_mirror(struct nesppu *ppu, enum nametable_mirror mirroring);
 uint8_t ppu_external_peek8(struct nesppu *ppu, uint16_t addr);
 uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr);
 void ppu_external_write8(struct nesppu *ppu, uint16_t addr, uint8_t value); 

@@ -47,7 +47,7 @@ uint8_t cpu_read8(struct nescpu *cpu, uint16_t addr) {
         value = 0xff;
     } else { 
         /// Cartridge space 
-        value = (*(cpu->PRG_reader))(cpu, cpu->rom, addr); 
+        value = (*(cpu->PRG_reader))(cpu, cpu->ppu, cpu->rom, addr); 
     }
     cpu->cpu_bus_last_value = value;
     return value;
@@ -65,7 +65,7 @@ void cpu_write8(struct nescpu *cpu, uint16_t addr, uint8_t value) {
         return;
     } else { 
         /// Cartridge space 
-        (*(cpu->PRG_writer))(cpu, cpu->rom, addr, value); 
+        (*(cpu->PRG_writer))(cpu, cpu->ppu, cpu->rom, addr, value); 
     }
 }
 
@@ -81,7 +81,7 @@ uint8_t cpu_peek8(struct nescpu *cpu, uint16_t addr) {
         return 0xff;
     } else { 
         /// Cartridge space 
-        return (*(cpu->PRG_reader))(cpu, cpu->rom, addr); 
+        return (*(cpu->PRG_reader))(cpu, cpu->ppu, cpu->rom, addr); 
     }
 }
 

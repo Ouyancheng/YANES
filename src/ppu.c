@@ -12,10 +12,15 @@ void ppu_init(struct nesppu *ppu) {
     ppu->addr = 0;
     ppu->addr_latching_lsb = false;
     ppu->data_read_buffer = 0;
-
+    memset(ppu->palette_ram, 0, 64);
     memset(ppu->oamdata, 0, 256);
+    memset(ppu->vram, 0, 2048);
 
     ppu->mirroring = MIRROR_HORI;
+    ppu->nametable0 = (uint8_t*)(ppu->vram);
+    ppu->nametable1 = (uint8_t*)(ppu->vram);
+    ppu->nametable2 = (uint8_t*)(ppu->vram) + 1024;
+    ppu->nametable3 = (uint8_t*)(ppu->vram) + 1024;
 
     ppu->CHR_reader = NULL;
     ppu->CHR_writer = NULL; 
@@ -32,6 +37,28 @@ void ppu_reset(struct nesppu *ppu) {
     ppu->scroll_latching_y = false;
     ppu->addr_latching_lsb = false;
     ppu->data_read_buffer = 0;
+}
+void ppu_set_nametable_mirror(struct nesppu *ppu, enum nametable_mirror mirroring) {
+    switch (mirroring) {
+        case MIRROR_FOUR:
+        case MIRROR_VERT:
+            ppu->nametable0 = (uint8_t*)(ppu->vram);
+            ppu->nametable1 = (uint8_t*)(ppu->vram) + 1024;
+            ppu->nametable2 = (uint8_t*)(ppu->vram);
+            ppu->nametable3 = (uint8_t*)(ppu->vram) + 1024;
+            ppu->mirroring = mirroring;
+            break;
+        case MIRROR_HORI:
+            ppu->nametable0 = (uint8_t*)(ppu->vram);
+            ppu->nametable1 = (uint8_t*)(ppu->vram);
+            ppu->nametable2 = (uint8_t*)(ppu->vram) + 1024;
+            ppu->nametable3 = (uint8_t*)(ppu->vram) + 1024;
+            ppu->mirroring = mirroring;
+            break;
+        default: 
+            printf("unknown mirroring %u\n", (unsigned)mirroring);
+            break;
+    }
 }
 #define PANIC_ON_OPEN_BUS_READ 0
 #if PANIC_ON_OPEN_BUS_READ

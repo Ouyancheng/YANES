@@ -53,7 +53,7 @@ struct nesrom *system_allocate_mapper_ines(struct nessystem *sys, uint32_t mappe
     rom->PRG_rom_size = PRG_size;
     rom->CHR_rom_size = CHR_size;
     rom->PRG_rom_offset = PRG_offset;
-    sys->ppu.mirroring = mirroring;
+    ppu_set_nametable_mirror(&(sys->ppu), mirroring);
     sys->rom = rom;
     sys->cpu.rom = sys->rom;
     sys->ppu.rom = sys->rom;

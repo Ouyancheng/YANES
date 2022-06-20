@@ -8,8 +8,8 @@ struct mapper0_NROM {
 };
 struct nescpu;
 struct nesppu;
-uint8_t NROM_read_PRG(struct nescpu *cpu, struct nesrom *rom, uint16_t addr); 
-void NROM_write_PRG(struct nescpu *cpu, struct nesrom *rom, uint16_t addr, uint8_t value); 
+uint8_t NROM_read_PRG(struct nescpu *cpu, struct nesppu *ppu, struct nesrom *rom, uint16_t addr); 
+void NROM_write_PRG(struct nescpu *cpu, struct nesppu *ppu, struct nesrom *rom, uint16_t addr, uint8_t value); 
 
 uint8_t NROM_read_CHR(struct nesppu *ppu, struct nesrom *rom, uint16_t addr); 
 void NROM_write_CHR(struct nesppu *ppu, struct nesrom *rom, uint16_t addr, uint8_t value); 
