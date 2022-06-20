@@ -194,6 +194,7 @@ uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
     if (addr < 0x2000) {
         uint8_t result = ppu->data_read_buffer;
         ppu->data_read_buffer = ppu->CHR_reader(ppu, ppu->rom, addr);
+        return result;
     } 
     else if (addr < 0x3F00) {
         addr &= UINT16_C(0x2fff);
