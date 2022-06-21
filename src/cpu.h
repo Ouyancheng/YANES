@@ -10,6 +10,7 @@
  * Another opcode table: http://www.oxyron.de/html/opcodes02.html
  * Easy 6502: https://skilldrick.github.io/easy6502/#registers 
  * How the flags are handled, especially the B and _ flags: https://www.nesdev.org/wiki/Status_flags#The_B_flag
+ * https://www.nesdev.org/6502_cpu.txt
  */
 #pragma once 
 

@@ -25,9 +25,8 @@ void ppu_init(struct nesppu *ppu) {
     ppu->CHR_reader = NULL;
     ppu->CHR_writer = NULL; 
     ppu->rom = NULL;
-
+    ppu->nmi_raised = false;
     ppu->iobus_last_value = 0;
-    ppu->vmembus_last_value = 0;
 }
 void ppu_reset(struct nesppu *ppu) {
     ppu->ctrl = 0;
@@ -73,8 +72,13 @@ uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
         case 0x2000: OPEN_IOBUS_READ("ppu control"); /// PPUCTRL
         case 0x2001: OPEN_IOBUS_READ("ppu mask"); /// PPUMASK
         case 0x2002: /// PPUSTATUS
-        {   /// some quirks 
-        /// see: https://www.nesdev.org/wiki/PPU_registers Status ($2002) < read
+        {
+            /// reading this seems to acknowledge the vblank NMI
+            /// see: https://www.nesdev.org/wiki/PPU_registers Status ($2002) < read
+            /// also: https://www.nesdev.org/wiki/NMI 
+            /// To sum up, when both the cpu is reading the status register and the ppu is trying to set the vblank NMI
+            /// then a race condition occurs the NMI is cleared before triggering
+            /// TODO: the race condition behaviour is not emulated here
             uint8_t stat = ppu->status;
             ppu->status = set_mask(ppu->status, PPUSTATUS_VBLANK_STARTED, false);
             ppu->addr_latching_lsb = false;
@@ -107,14 +111,28 @@ void ppu_external_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
     ppu->iobus_last_value = value;
     switch (addr) {
         case 0x2000: /// PPUCTRL
-            /// TODO: this is not exactly right, there are more stuffs to do 
+        {
+            /// NOTE: https://www.nesdev.org/wiki/PPU_registers Controller ($2000) > write
+            /// If the PPU is currently in vertical blank, 
+            /// and the PPUSTATUS ($2002) vblank flag is still set (1), 
+            /// changing the NMI flag in bit 7 of $2000 from 0 to 1 will immediately generate an NMI.
+            bool prev_nmi_enabled = (ppu->ctrl & PPUCTRL_GENERATE_NMI);
+            bool vblank_flag_is_set = (ppu->status & PPUSTATUS_VBLANK_STARTED);
             ppu->ctrl = value;
+            if (vblank_flag_is_set && !prev_nmi_enabled && (value & PPUCTRL_GENERATE_NMI)) {
+                ppu->nmi_raised = true;
+            }
             break;
+            /** TODO: there's a bit 0 race condition, but let's leave it away... */
+            /// Vertical blanking lines (241-260)
+            /// The VBlank flag of the PPU is set at tick 1 (the second tick) of scanline 241, 
+            /// where the VBlank NMI also occurs.
+        }
         case 0x2001: /// PPUMASK
             ppu->mask = value;
             break;
         case 0x2002: /// PPUSTATUS
-            // panic("ppu status is not writable\n");
+            /// DO NOT panic on open bus write
             break;
         case 0x2003: /// OAMADDR
             ppu->oamaddr = value;

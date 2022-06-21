@@ -17,5 +17,8 @@
  * https://gcc.gnu.org/onlinedocs/cpp/Macro-Arguments.html 
  * https://gcc.gnu.org/onlinedocs/cpp/Macro-Pitfalls.html#Macro-Pitfalls
  * https://gcc.gnu.org/onlinedocs/cpp/Argument-Prescan.html#Argument-Prescan
- * 
+ * https://stackoverflow.com/questions/12824703/array-format-for-define-c-preprocessor
+ * https://stackoverflow.com/questions/11693219/macro-expansion-and-stringification-how-to-get-the-macro-name-not-its-value-s
+ * https://stackoverflow.com/questions/48465770/c-preprocessor-macro-concatenate-arguments-after-expansion
+ * https://stackoverflow.com/questions/28526930/expanding-recombining-macro-tuple
  */

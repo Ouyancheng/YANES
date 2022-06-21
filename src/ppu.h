@@ -28,7 +28,7 @@ struct nesppu {
     CHR_writer_t CHR_writer; 
     
     uint8_t iobus_last_value;
-    uint8_t vmembus_last_value; 
+    bool nmi_raised;
 
     uint8_t *nametables[4];
     
@@ -78,6 +78,7 @@ void ppu_reset(struct nesppu *ppu);
 
 void ppu_set_nametable_mirror(struct nesppu *ppu, enum nametable_mirror mirroring);
 uint8_t ppu_external_peek8(struct nesppu *ppu, uint16_t addr);
+/// Be super careful on implementing this: https://www.nesdev.org/wiki/PPU_registers
 uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr);
 void ppu_external_write8(struct nesppu *ppu, uint16_t addr, uint8_t value); 
 
