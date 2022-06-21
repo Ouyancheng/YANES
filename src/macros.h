@@ -11,3 +11,11 @@
 #define MACRO_CONCAT_S(A, B) A##B
 #define MACRO_EXPAND_TO_STR(...) MACRO_EXPAND_TO_STR_S(__VA_ARGS__)
 #define MACRO_EXPAND_TO_STR_S(EXPANDED) #EXPANDED
+
+/**
+ * useful: 
+ * https://gcc.gnu.org/onlinedocs/cpp/Macro-Arguments.html 
+ * https://gcc.gnu.org/onlinedocs/cpp/Macro-Pitfalls.html#Macro-Pitfalls
+ * https://gcc.gnu.org/onlinedocs/cpp/Argument-Prescan.html#Argument-Prescan
+ * 
+ */
