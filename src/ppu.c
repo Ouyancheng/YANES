@@ -6,11 +6,17 @@ void ppu_init(struct nesppu *ppu) {
     ppu->mask = 0;
     ppu->status = 0b10100000;
     ppu->oamaddr = 0;
-    ppu->scroll_x = 0;
-    ppu->scroll_y = 0;
-    ppu->scroll_latching_y = false;
-    ppu->addr = 0;
-    ppu->addr_latching_lsb = false;
+
+    // ppu->scroll_x = 0;
+    // ppu->scroll_y = 0;
+    // ppu->scroll_latching_y = false;
+    // ppu->addr = 0;
+    // ppu->addr_latching_lsb = false;
+
+    ppu->v = 0;
+    ppu->t = 0;
+    ppu->x = 0;
+    ppu->w = 0; 
     ppu->data_read_buffer = 0;
     memset(ppu->palette_ram, 0, 64);
     memset(ppu->oamdata, 0, 256);
@@ -31,10 +37,17 @@ void ppu_init(struct nesppu *ppu) {
 void ppu_reset(struct nesppu *ppu) {
     ppu->ctrl = 0;
     ppu->mask = 0;
-    ppu->scroll_x = 0;
-    ppu->scroll_y = 0;
-    ppu->scroll_latching_y = false;
-    ppu->addr_latching_lsb = false;
+
+    // ppu->scroll_x = 0;
+    // ppu->scroll_y = 0;
+    // ppu->scroll_latching_y = false;
+    // ppu->addr_latching_lsb = false;
+
+    /// TODO: PPUADDR is unchanged!!! 
+    ppu->v &= 0x0FFF; // but do we need to preserve the v register?
+    ppu->t &= 0x0FFF;
+    ppu->x = 0;
+    ppu->w = 0;
     ppu->data_read_buffer = 0;
 }
 void ppu_set_nametable_mirror(struct nesppu *ppu, enum nametable_mirror mirroring) {
@@ -81,8 +94,11 @@ uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
             /// TODO: the race condition behaviour is not emulated here
             uint8_t stat = ppu->status;
             ppu->status = set_mask(ppu->status, PPUSTATUS_VBLANK_STARTED, false);
-            ppu->addr_latching_lsb = false;
-            ppu->scroll_latching_y = false;
+
+            // ppu->addr_latching_lsb = false;
+            // ppu->scroll_latching_y = false;
+
+            ppu->w = 0; // clear the latch 
             value = (stat | (ppu->iobus_last_value & 0b00011111)); // see the open bus read
             break;
         }
@@ -93,6 +109,7 @@ uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
         case 0x2005: OPEN_IOBUS_READ("ppu scroll"); /// PPUSCROLL
         case 0x2006: OPEN_IOBUS_READ("ppu addr"); /// PPUADDR 
         case 0x2007: /// PPUDATA
+            /// TODO: do the internal registers
             value = ppu_internal_read8(ppu, ppu->addr); 
             /// NOTE:: Increment PPU's internal address!
             ppu->addr += ((ppu->ctrl & PPUCTRL_VRAM_ADDR_INCREMENT) ? 32 : 1);

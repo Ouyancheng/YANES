@@ -9,17 +9,44 @@ enum nametable_mirror {
     MIRROR_FOUR, 
 };
 struct nesppu {
-    uint8_t ctrl;
-    uint8_t mask;
-    uint8_t status;
-    uint8_t oamaddr;
+    /// TODO: this representation of PPU is not correct!!! 
     bool scroll_latching_y;
     uint8_t scroll_x; /// Special: (two writes: X scroll, Y scroll)
     uint8_t scroll_y;
     bool addr_latching_lsb;
     uint16_t addr; /// Special: (two writes: most significant byte, least significant byte)
 
-    uint8_t data_read_buffer; /// for PPU's one cycle delay of data
+    /// NOTE: this is the correct internal of PPU 
+    /// See: https://www.nesdev.org/wiki/PPU_scrolling#PPU_internal_registers
+    uint8_t ctrl;
+    uint8_t mask;
+    uint8_t status;
+    uint8_t oamaddr;
+    /// the current vram address (15 bits)
+    uint16_t v;
+    /// the temporary vram address (15 bits)
+    uint16_t t; 
+    /// fine x scroll (3 bits)
+    uint8_t x; 
+    /// first of second write toggle (1 bit)
+    uint8_t w;
+    /* notice that the scroll and address share the same toggle */
+
+    /**
+     * The structure of t and v: 
+     * 15   14               0
+     * 0    yyy NN YYYYY XXXXX
+     * 
+     * yyy: fine y scroll -- the y-position within a tile 
+     * NN: the nametable address -- basically the base address of the nametable - 0x2000 = {0x0000, 0x4000, 0x8000, 0xC000}
+     * YYYYY: coarse Y scroll -- the y-position of the tile 
+     * XXXXX: coarse X scroll -- the x-position of the tile 
+     * 
+     * xxx: fine x scroll -- similar to yyy
+     * w: just to specify whether it's the first of the second write 
+     */
+    /// for PPU's one cycle delay of data
+    uint8_t data_read_buffer; 
     enum nametable_mirror mirroring;
     
 
