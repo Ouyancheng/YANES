@@ -1,55 +1,39 @@
 #include "ppu.h"
 #include "cpu.h"
-/// https://www.nesdev.org/wiki/PPU_power_up_state
+
+/** https://www.nesdev.org/wiki/PPU_power_up_state */
 void ppu_init(struct nesppu *ppu) {
+    ppu->v = 0;
+    ppu->t = 0;
+    ppu->x = 0;
+    ppu->w = 0;
     ppu->ctrl = 0;
     ppu->mask = 0;
     ppu->status = 0b10100000;
     ppu->oamaddr = 0;
-
-    // ppu->scroll_x = 0;
-    // ppu->scroll_y = 0;
-    // ppu->scroll_latching_y = false;
-    // ppu->addr = 0;
-    // ppu->addr_latching_lsb = false;
-
-    ppu->v = 0;
-    ppu->t = 0;
-    ppu->x = 0;
-    ppu->w = 0; 
     ppu->data_read_buffer = 0;
-    memset(ppu->palette_ram, 0, 64);
-    memset(ppu->oamdata, 0, 256);
-    memset(ppu->vram, 0, 2048);
-
-    ppu->mirroring = MIRROR_HORI;
-    ppu->nametables[0] = (uint8_t*)(ppu->vram);
-    ppu->nametables[1] = (uint8_t*)(ppu->vram);
-    ppu->nametables[2] = (uint8_t*)(ppu->vram) + 1024;
-    ppu->nametables[3] = (uint8_t*)(ppu->vram) + 1024;
-
-    ppu->CHR_reader = NULL;
-    ppu->CHR_writer = NULL; 
+    ppu_set_nametable_mirror(ppu, MIRROR_VERT);
     ppu->rom = NULL;
-    ppu->nmi_raised = false;
+    ppu->CHR_reader = NULL;
+    ppu->CHR_writer = NULL;
     ppu->iobus_last_value = 0;
+    ppu->nmi_raised = false;
+    memset(ppu->palette_ram, 0, 32);
+    memset(ppu->oamdata, 0, 256); 
+    memset(ppu->vram, 0, 2048);
 }
+
 void ppu_reset(struct nesppu *ppu) {
-    ppu->ctrl = 0;
-    ppu->mask = 0;
-
-    // ppu->scroll_x = 0;
-    // ppu->scroll_y = 0;
-    // ppu->scroll_latching_y = false;
-    // ppu->addr_latching_lsb = false;
-
-    /// TODO: PPUADDR is unchanged!!! 
-    ppu->v &= 0x0FFF; // but do we need to preserve the v register?
+    ppu->v &= 0x0FFF; // the PPUADDR are unchanged, but PPU scroll is zeroed?
     ppu->t &= 0x0FFF;
     ppu->x = 0;
     ppu->w = 0;
     ppu->data_read_buffer = 0;
+    ppu->ctrl = 0;
+    ppu->mask = 0;
+    // odd frame is set to false 
 }
+
 void ppu_set_nametable_mirror(struct nesppu *ppu, enum nametable_mirror mirroring) {
     switch (mirroring) {
         case MIRROR_FOUR:
@@ -72,160 +56,134 @@ void ppu_set_nametable_mirror(struct nesppu *ppu, enum nametable_mirror mirrorin
             break;
     }
 }
-#define PANIC_ON_OPEN_BUS_READ 0
-#if PANIC_ON_OPEN_BUS_READ
-#define OPEN_IOBUS_READ(reg) do { panic(reg " is an open bus read\n"); return 0xFF; } while (0)
-#else 
-#define OPEN_IOBUS_READ(reg) return ppu->iobus_last_value
-#endif 
-/// see: https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus for how to handle open bus reads
+/** Be super careful on implementing this: https://www.nesdev.org/wiki/PPU_registers */
 uint8_t ppu_external_read8(struct nesppu *ppu, uint16_t addr) {
     uint8_t value;
     switch (addr) {
-        case 0x2000: OPEN_IOBUS_READ("ppu control"); /// PPUCTRL
-        case 0x2001: OPEN_IOBUS_READ("ppu mask"); /// PPUMASK
-        case 0x2002: /// PPUSTATUS
-        {
-            /// reading this seems to acknowledge the vblank NMI
-            /// see: https://www.nesdev.org/wiki/PPU_registers Status ($2002) < read
-            /// also: https://www.nesdev.org/wiki/NMI 
-            /// To sum up, when both the cpu is reading the status register and the ppu is trying to set the vblank NMI
-            /// then a race condition occurs the NMI is cleared before triggering
-            /// TODO: the race condition behaviour is not emulated here
+        case PPUCTRL: return ppu->iobus_last_value;
+        case PPUMASK: return ppu->iobus_last_value;
+        case PPUSTATUS: {
             uint8_t stat = ppu->status;
-            ppu->status = set_mask(ppu->status, PPUSTATUS_VBLANK_STARTED, false);
-
-            // ppu->addr_latching_lsb = false;
-            // ppu->scroll_latching_y = false;
-
-            ppu->w = 0; // clear the latch 
-            value = (stat | (ppu->iobus_last_value & 0b00011111)); // see the open bus read
+            ppu->status &= (~PPUSTATUS_VBLANK_STARTED);
+            ppu->w = 0;
+            value = (stat | (ppu->iobus_last_value & 0b00011111));
             break;
         }
-        case 0x2003: OPEN_IOBUS_READ("ppu OAMADDR"); /// OAMADDR
-        case 0x2004: /// OAMDATA
+        case OAMADDR: return ppu->iobus_last_value;
+        case OAMDATA: 
             value = ppu->oamdata[ppu->oamaddr];
             break;
-        case 0x2005: OPEN_IOBUS_READ("ppu scroll"); /// PPUSCROLL
-        case 0x2006: OPEN_IOBUS_READ("ppu addr"); /// PPUADDR 
-        case 0x2007: /// PPUDATA
-            /// TODO: do the internal registers
-            value = ppu_internal_read8(ppu, ppu->addr); 
-            /// NOTE:: Increment PPU's internal address!
-            ppu->addr += ((ppu->ctrl & PPUCTRL_VRAM_ADDR_INCREMENT) ? 32 : 1);
-            ppu->addr &= 0x3FFF;
+        case PPUSCROLL: return ppu->iobus_last_value;
+        case PPUADDR: return ppu->iobus_last_value;
+        case PPUDATA: {
+            value = ppu_internal_read8(ppu, ppu->v & 0x3FFF);
+            ppu->v += ((ppu->ctrl & PPUCTRL_VRAM_ADDR_INCREMENT) ? 32 : 1);
+            /*
+            TODO: 
+            During rendering (on the pre-render line and the visible lines 0-239, 
+            provided either background or sprite rendering is enabled), 
+            it will update v in an odd way, 
+            triggering a coarse X increment and a Y increment simultaneously (with normal wrapping behavior).
+            */
             break;
-        // case 0x4014: OPEN_IOBUS_READ("ppu OAMDMA"); /// OAMDMA
-        default: 
-            panic("address %04X does not belong to PPU\n", addr);
-            return 0xFF;
+        }
+        default: {
+            panic("address %04X is not a PPU address\n", addr);
+        }
     }
     ppu->iobus_last_value = value;
     return value;
 }
-/// https://www.nesdev.org/wiki/PPU_registers
+
 void ppu_external_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
     ppu->iobus_last_value = value;
     switch (addr) {
-        case 0x2000: /// PPUCTRL
-        {
-            /// NOTE: https://www.nesdev.org/wiki/PPU_registers Controller ($2000) > write
-            /// If the PPU is currently in vertical blank, 
-            /// and the PPUSTATUS ($2002) vblank flag is still set (1), 
-            /// changing the NMI flag in bit 7 of $2000 from 0 to 1 will immediately generate an NMI.
+        case PPUCTRL: {
+            ppu->t &= UINT16_C(0b1111001111111111);
+            ppu->t |= ((uint16_t)value & UINT16_C(0b11)) << 10;
             bool prev_nmi_enabled = (ppu->ctrl & PPUCTRL_GENERATE_NMI);
             bool vblank_flag_is_set = (ppu->status & PPUSTATUS_VBLANK_STARTED);
             ppu->ctrl = value;
             if (vblank_flag_is_set && !prev_nmi_enabled && (value & PPUCTRL_GENERATE_NMI)) {
                 ppu->nmi_raised = true;
             }
-            break;
             /** TODO: there's a bit 0 race condition, but let's leave it away... */
-            /// Vertical blanking lines (241-260)
-            /// The VBlank flag of the PPU is set at tick 1 (the second tick) of scanline 241, 
-            /// where the VBlank NMI also occurs.
+            break;
         }
-        case 0x2001: /// PPUMASK
-            ppu->mask = value;
+        case PPUMASK: ppu->mask = value; break;
+        case PPUSTATUS: break;
+        case OAMADDR: ppu->oamaddr = value; break;
+        case OAMDATA: {
+            /** TODO: For emulation purposes, it is probably best to completely ignore writes during rendering. */
+            ppu->oamdata[ppu->oamaddr++] = value; 
             break;
-        case 0x2002: /// PPUSTATUS
-            /// DO NOT panic on open bus write
+        }
+        case PPUSCROLL: {
+            uint16_t d = (uint16_t)value;
+            if (ppu->w == 0) {
+                ppu->t &= (~UINT16_C(0b11111));
+                ppu->t |= ((d >> 3) & 0b11111);
+                ppu->x = (uint8_t)(d & 0b111);
+                ppu->w = 1;
+            } else {
+                ppu->t &= UINT16_C(0b000110000011111);
+                ppu->t |= ((d >> 3) << 5);
+                ppu->t |= ((d & 0b111) << 12);
+                ppu->w = 0;
+            }
             break;
-        case 0x2003: /// OAMADDR
-            ppu->oamaddr = value;
+        }
+        case PPUADDR: {
+            uint16_t d = (uint16_t)value;
+            if (ppu->w == 0) {
+                ppu->t &= UINT16_C(0b000000011111111);
+                ppu->t |= ((d & 0b111111) << 8);
+                ppu->w = 1;
+            } else {
+                ppu->t &= UINT16_C(0xFF00);
+                ppu->t |= (d & 0xFF);
+                ppu->v = ppu->t;
+                ppu->w = 0;
+            }
             break;
-        case 0x2004: /// OAMDATA
-            /// the oam address is incremented by 1 automatically
-            ppu->oamdata[ppu->oamaddr] = value;
-            ppu->oamaddr += 1;
+        }
+        case PPUDATA: {
+            ppu_internal_write8(ppu, ppu->v & 0x3FFF, value);
+            ppu->v += ((ppu->ctrl & PPUCTRL_VRAM_ADDR_INCREMENT) ? 32 : 1);
+            /*
+            TODO: (also in the read counterpart)
+            During rendering (on the pre-render line and the visible lines 0-239, 
+            provided either background or sprite rendering is enabled), 
+            it will update v in an odd way, 
+            triggering a coarse X increment and a Y increment simultaneously (with normal wrapping behavior).
+            */
             break;
-        case 0x2005: /// PPUSCROLL
-            if (ppu->scroll_latching_y) ppu->scroll_y = value;
-            else ppu->scroll_x = value;
-            ppu->scroll_latching_y = !(ppu->scroll_latching_y);
-            break;
-        case 0x2006: /// PPUADDR 
-            if (ppu->addr_latching_lsb) { ppu->addr &= 0xFF00; ppu->addr |= (uint16_t)value; } 
-            else { ppu->addr &= 0x00FF; ppu->addr |= (((uint16_t)value) << 8); }
-            ppu->addr &= 0x3FFF;
-            ppu->addr_latching_lsb = !(ppu->addr_latching_lsb);
-            break;
-        case 0x2007: /// PPUDATA
-            ppu_internal_write8(ppu, ppu->addr, value);
-            /// NOTE: Increment PPU's internal address!
-            ppu->addr += ((ppu->ctrl & PPUCTRL_VRAM_ADDR_INCREMENT) ? 32 : 1);
-            ppu->addr &= 0x3FFF;
-            break;
-        // case 0x4014: /// OAMDMA
-            /// TODO: implement this 
-            /// The CPU is suspended during the DMA 
-            /// and it only copies a page to the oam memory
-            /// take 513 or 514 cycles after the $4014 write tick. 
-            /// (1 wait state cycle while waiting for writes to complete, 
-            /// +1 if on an odd CPU cycle, 
-            /// then 256 alternating read/write cycles.)
-            // break;
-        default: 
-            panic("address %04X does not belong to PPU\n", addr);
-            break;
+        }
+        default: {
+            panic("address %04X is not a PPU address\n", addr);
+        }
     }
 }
 
 uint8_t ppu_external_peek8(struct nesppu *ppu, uint16_t addr) {
     switch (addr) {
-        case 0x2000: /// PPUCTRL
-            return ppu->ctrl;
-        case 0x2001: /// PPUMASK
-            return ppu->mask;
-        case 0x2002: /// PPUSTATUS
-            return ppu->status;
-        case 0x2003: /// OAMADDR
-            return ppu->oamaddr;
-        case 0x2004: /// OAMDATA
-            return ppu->oamdata[ppu->oamaddr];
-        case 0x2005: /// PPUSCROLL
-            return ppu->scroll_latching_y ? ppu->scroll_y : ppu->scroll_x;
-        case 0x2006: /// PPUADDR 
-            return ppu->addr_latching_lsb ? ppu->addr : ppu->addr >> 8;
-        case 0x2007: /// PPUDATA
+        case PPUCTRL: return ppu->ctrl;
+        case PPUMASK: return ppu->mask;
+        case PPUSTATUS: return ppu->status;
+        case OAMADDR: return ppu->oamaddr;
+        case OAMDATA: return ppu->oamdata[ppu->oamaddr];
+        case PPUSCROLL: return ppu->t;
+        case PPUADDR: return ppu->v;
+        case PPUDATA: return 0;
+        default: {
+            panic("address %04X is not a PPU address\n", addr);
             return 0;
-        // case 0x4014: /// OAMDMA
-        //     return 0;
-        default: panic("address %04X does not belong to PPU\n", addr);
-            return 0xFF;
+        }
     }
 }
-
-
-#if PANIC_ON_OPEN_BUS_READ
-#define OPEN_VMEMBUS_READ(reg) do { panic(reg " is an open bus read\n"); return 0xFF; } while (0)
-#else 
-#define OPEN_VMEMBUS_READ(reg) return (addr & 0xFF)
-#endif 
-/// see this for the open bus behaviour https://www.nesdev.org/wiki/Open_bus_behavior#PPU_open_bus
+/** https://www.nesdev.org/wiki/PPU_memory_map */
 uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
     addr &= 0x3FFF;
-    /// NOTE: verify this
     if (addr < 0x2000) {
         uint8_t result = ppu->data_read_buffer;
         ppu->data_read_buffer = ppu->CHR_reader(ppu, ppu->rom, addr);
@@ -240,8 +198,10 @@ uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
     }
     else {
         uint8_t result;
-        /// Reading the palettes still updates the internal buffer though, 
-        /// but the data placed in it is the mirrored nametable data that would appear "underneath" the palette.
+        /* 
+        Reading the palettes still updates the internal buffer though, 
+        but the data placed in it is the mirrored nametable data that would appear "underneath" the palette.
+        */ 
         uint16_t nametable_mirror_addr = addr & UINT16_C(0x2fff);
         ppu->data_read_buffer = ppu->nametables[3][nametable_mirror_addr - 0x2C00];
         uint16_t palette_addr = (addr - UINT16_C(0x3f00)) % UINT16_C(32); // addr = 0x3f00 - 0x3f1f 
@@ -254,7 +214,6 @@ uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr) {
     }
 }
 void ppu_internal_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
-    /// NOTE: verify this
     addr &= 0x3FFF;
     if (addr < 0x2000) {
         ppu->CHR_writer(ppu, ppu->rom, addr, value);
@@ -273,11 +232,16 @@ void ppu_internal_write8(struct nesppu *ppu, uint16_t addr, uint8_t value) {
         }
     }
 }
-
-
-
-
-
-
-
+/** https://www.nesdev.org/wiki/PPU_registers#OAM_DMA_($4014)_%3E_write */
+void ppu_oam_dma(struct nesppu *ppu, struct nescpu *cpu, uint8_t page) {
+    uint16_t hi = ((uint16_t)page) << 8; 
+    unsigned cyc = ((cpu->cycles % 2 == 1) ? 2 : 1); // ((cpu->cycles % 2 == 1) ? 514 : 513);
+    cpu->cycles += cyc;
+    for (unsigned i = 0; i < 256; ++i) {
+        ppu->oamdata[ppu->oamaddr] = cpu_read8(cpu, hi + i); 
+        ppu->oamaddr += 1; 
+        ppu->oamaddr %= 256;
+        cpu->cycles += 2; 
+    }
+}
 

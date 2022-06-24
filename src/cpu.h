@@ -30,6 +30,7 @@ struct nescpu {
     PRG_reader_t PRG_reader;
     PRG_writer_t PRG_writer;
     struct nesppu *ppu;
+    uint32_t cycles;
     /// CPU ram
     uint8_t ram[2048];
 };

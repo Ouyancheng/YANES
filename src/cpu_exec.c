@@ -636,7 +636,7 @@ internal_function int single_step(struct nescpu *cpu) {
     }
     /// TODO: handle cycles_taken 
     base_cycle += additional_cycles;
-
+    cpu->cycles += base_cycle;
     return 0;
 }
 
