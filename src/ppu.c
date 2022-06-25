@@ -18,6 +18,11 @@ void ppu_init(struct nesppu *ppu) {
     ppu->CHR_writer = NULL;
     ppu->iobus_last_value = 0;
     ppu->nmi_raised = false;
+    ppu->state = PPUSTATE_RENDER;
+    ppu->frames = 0;
+    ppu->cycles = 0;
+    ppu->dots = 0;
+    ppu->lines = 0;
     memset(ppu->palette_ram, 0, 32);
     memset(ppu->oamdata, 0, 256); 
     memset(ppu->vram, 0, 2048);
@@ -31,7 +36,12 @@ void ppu_reset(struct nesppu *ppu) {
     ppu->data_read_buffer = 0;
     ppu->ctrl = 0;
     ppu->mask = 0;
+    ppu->state = PPUSTATE_RENDER;
+    ppu->cycles = 7 * 3; // because cpu handling the reset interrupt takes 7 cycles
+    ppu->dots = 0;
+    ppu->lines = 0;
     // odd frame is set to false 
+    ppu->frames = 0; 
 }
 
 void ppu_set_nametable_mirror(struct nesppu *ppu, enum nametable_mirror mirroring) {

@@ -18,6 +18,7 @@ set(PROJECT_C_FILES
     src/cpu_exec.c
     src/main.c
     src/ppu.c
+    src/ppu_render.c
     src/sdk.c
     src/system.c
     src/mappers/mapper0.c

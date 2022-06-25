@@ -57,6 +57,12 @@ enum ppu_status_flags {
 
 
 
+enum ppu_state {
+    PPUSTATE_RENDER,
+    PPUSTATE_POSTRENDER,
+    PPUSTATE_VBLANK,
+    PPUSTATE_PRERENDER,
+};
 struct nesppu {
     /** the current vram address (15 bits) */
     uint16_t v;
@@ -109,6 +115,16 @@ struct nesppu {
     /** the four nametables, use pointers here because sometimes the ROM provides extra memory for this */
     uint8_t *nametables[4];
 
+    enum ppu_state state;
+    /** number of frames rendered */
+    uint32_t frames;
+    /** cycles elasped */
+    uint32_t cycles;
+    /** current dot in the line / x coordinate */
+    uint16_t dots;
+    /** current line / y coordinate */
+    uint16_t lines;
+
     uint8_t palette_ram[32];
     uint8_t oamdata[256];
     uint8_t vram[2048];
@@ -131,6 +147,6 @@ void ppu_internal_write8(struct nesppu *ppu, uint16_t addr, uint8_t value);
 
 /** Handle OAM DMA when writing to OAMDMA 0x4014, TODO: implement this */
 void ppu_oam_dma(struct nesppu *ppu, struct nescpu *cpu, uint8_t page); 
-
-
+/** tick the PPU by the number of PPU cycles */
+void ppu_tick(struct nesppu *ppu, unsigned num_cycles);
 

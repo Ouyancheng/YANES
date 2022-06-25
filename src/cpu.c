@@ -32,7 +32,7 @@ void cpu_reset(struct nescpu *cpu) {
     cpu->sp = CPU_POWERUP_SP; // it seems like it's 0x00 - 3 = 0xFD, not 0xFD - 3... 
     cpu->p |= CPU_FLAG_I;
     cpu->pc = cpu_read16(cpu, CPU_RESET_VECTOR); 
-    cpu->cycles = 0;
+    cpu->cycles = 7; // to handle the reset interrupt it takes 7 cycles
 }
 
 

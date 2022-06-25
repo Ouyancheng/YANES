@@ -651,6 +651,8 @@ void cpu_run(struct nescpu *cpu, void(*callback)(struct nescpu *c)) {
         if (single_step_outcome < 0) {
             break; 
         }
+        
+        /// TODO: interrupts NMI, IRQ, reset
     }
 }
 
