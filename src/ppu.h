@@ -99,6 +99,10 @@ struct nesppu {
      */
     uint8_t background_palette_attributes[2];
     /**
+     * Two nametable bytes used for fetching the tile data
+     */
+    uint8_t nametable_bytes[2];
+    /**
      * 8 pairs of 8-bit shift registers - 
      * These contain the pattern table data for up to 8 sprites, to be rendered on the current scanline. 
      * Unused sprites are loaded with an all-transparent set of values.

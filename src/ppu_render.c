@@ -39,21 +39,24 @@ static inline uint8_t fetch_attribute_byte(struct nesppu *ppu) {
     return attribute_byte;
 }
 /** https://www.nesdev.org/wiki/PPU_scrolling#Coarse_X_increment */
-static inline void x_increment(struct nesppu *ppu) {
-    if (ppu->x < 0b111) {
-        ppu->x += 1;
+static inline void coarse_X_increment(struct nesppu *ppu) {
+    /*
+    fine X value does not change during rendering; 
+    the only thing that changes it is a $2005 first write
+    */
+    if ((ppu->v & 0b11111) == 0b11111) { // coarse X 
+        ppu->v &= ~UINT16_C(0b11111);
+        ppu->v ^= 0x0400; // switch horizontal nametable
     } else {
-        ppu->x = 0;
-        if ((ppu->v & 0b11111) == 0b11111) { // coarse X 
-            ppu->v &= ~UINT16_C(0b11111);
-            ppu->v ^= 0x0400; // switch horizontal nametable
-        } else {
-            ppu->v += 1;
-        }
+        ppu->v += 1;
     }
 }
 /** https://www.nesdev.org/wiki/PPU_scrolling#Y_increment */
 static inline void y_increment(struct nesppu *ppu) {
+    /*
+    If rendering is enabled, fine Y is incremented at dot 256 of each scanline, 
+    overflowing to coarse Y, and finally adjusted to wrap among the nametables vertically.
+    */
     if ((ppu->v & 0x7000) != 0x7000) {  // if the fine-y is not-yet wrapping
         ppu->v += 0x1000;
     } else {
@@ -84,7 +87,31 @@ void ppu_tick(struct nesppu *ppu, unsigned num_cycles) {
             ppu->dots += 1;
         }
         else if (ppu->dots <= 256) {
-            
+            unsigned dots_m_1 = ppu->dots - 1;
+            switch (dots_m_1 % 8) {
+                case 1: {
+                    // fetch nametable byte
+                    uint8_t nametable_byte = fetch_nametable_byte(ppu);
+                    break;
+                }
+                case 3: {
+                    // fetch attribute table byte
+                    uint8_t attribute_table_byte = fetch_attribute_byte(ppu);
+
+                    break;
+                }
+                    
+                case 5: 
+                    // fetch lower background tile byte
+                    break;
+                case 7: 
+                    // fetch higher background tile byte and increment the horizontal v
+                    
+                    break;
+                default:
+                    break;
+            }
+            ppu->dots += 1;
         }
         else if (ppu->dots == 257) {
 
