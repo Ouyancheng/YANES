@@ -90,20 +90,20 @@ struct nesppu {
      * 2 16-bit shift registers - These contain the pattern table data for two tiles. 
      * Every 8 cycles, the data for the next tile is loaded into the upper 8 bits of this shift register. 
      * Meanwhile, the pixel to render is fetched from one of the lower 8 bits.
+     * NOTE: one uint16_t is composed of AAAAAAAA BBBBBBBB, where AAAAAAAA is the first plane of the first tile
+     * and BBBBBBBB is the first plane of the second tile
+     * The other uint16_t is the second plane
      */
-    uint32_t background_pattern_table_data; 
-    /**
-     * The tile that's currently rendering
-     */
-    uint16_t current_background_tile;
+    uint16_t background_pattern_table_data[2]; 
     /**
      * 2 8-bit shift registers - These contain the palette attributes for the lower 8 pixels of the 16-bit shift register. 
      * These registers are fed by a latch which contains the palette attribute for the next tile. 
      * Every 8 cycles, the latch is loaded with the palette attribute for the next tile.
+     * NOTE: we code the two bits in a zipped way -- the first two bits are the attribute bit to shift out
      */
     uint16_t background_palette_attributes;
     /**
-     * Two nametable bytes used for fetching the tile data
+     * Two nametable bytes used for fetching the tile data (for two tiles)
      */
     uint16_t nametable_bytes;
     /**

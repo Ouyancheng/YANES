@@ -39,7 +39,7 @@ static inline uint8_t fetch_attribute_byte(struct nesppu *ppu) {
     return attribute_byte;
 }
 /** https://www.nesdev.org/wiki/PPU_scrolling#Coarse_X_increment */
-static inline void coarse_X_increment(struct nesppu *ppu) {
+static void coarse_X_increment(struct nesppu *ppu) {
     /*
     fine X value does not change during rendering; 
     the only thing that changes it is a $2005 first write
@@ -52,7 +52,7 @@ static inline void coarse_X_increment(struct nesppu *ppu) {
     }
 }
 /** https://www.nesdev.org/wiki/PPU_scrolling#Y_increment */
-static inline void y_increment(struct nesppu *ppu) {
+static void y_increment(struct nesppu *ppu) {
     /*
     If rendering is enabled, fine Y is incremented at dot 256 of each scanline, 
     overflowing to coarse Y, and finally adjusted to wrap among the nametables vertically.
@@ -73,63 +73,136 @@ static inline void y_increment(struct nesppu *ppu) {
         ppu->v = ((ppu->v & (~UINT16_C(0x03E0))) | (coarse_Y << 5)); // put coarse Y back into v
     }
 }
+/** fetch memory according to the memory timing during the rendering */
+static void render_memory_fetch(struct nesppu *ppu) {
+    unsigned dots_m_1 = ppu->dots - 1;
+    switch (dots_m_1 % 8) {
+        case 1: {
+            // fetch nametable byte
+            /** https://www.nesdev.org/wiki/PPU_nametables */
+            uint16_t nametable_byte = fetch_nametable_byte(ppu);
+            ppu->nametable_bytes >>= 8;
+            ppu->nametable_bytes |= ((uint16_t)nametable_byte) << 8;
+            break;
+        }
+        case 3: {
+            // fetch attribute table byte
+            /** https://www.nesdev.org/wiki/PPU_attribute_tables */
+            uint16_t attribute_table_byte = fetch_attribute_byte(ppu);
+            ppu->background_palette_attributes >>= 8;
+            ppu->background_palette_attributes |= ((uint16_t)attribute_table_byte) << 8;
+            break;
+        }
+        case 5: {
+            // fetch lower background tile byte
+            /** https://www.nesdev.org/wiki/PPU_pattern_tables */
+            uint16_t nametable_byte = (ppu->nametable_bytes & 0xFF);
+            uint16_t chr_address = (nametable_byte << 4) + ((ppu->v >> 12) & 0b111); // fine-y scroll
+            chr_address |= ((ppu->ctrl & PPUCTRL_BACKGROUND_PATTERN_ADDR) >> 4) << 12;
+            uint16_t lower_tile_byte = ppu->CHR_reader(ppu, ppu->rom, chr_address);
+            ppu->background_pattern_table_data[0] >>= 8;
+            ppu->background_pattern_table_data[0] |= ((uint16_t)lower_tile_byte) << 8;
+            break;
+        }
+        case 7: {
+            // fetch higher background tile byte and increment the horizontal v
+            uint16_t nametable_byte = (ppu->nametable_bytes & 0xFF);
+            uint16_t chr_address = (nametable_byte << 4) + ((ppu->v >> 12) & 0b111) + 8; // +8 bytes higher than the lower byte
+            chr_address |= ((ppu->ctrl & PPUCTRL_BACKGROUND_PATTERN_ADDR) >> 4) << 12;
+            uint16_t higher_tile_byte = ppu->CHR_reader(ppu, ppu->rom, chr_address);
+            ppu->background_pattern_table_data[0] >>= 8;
+            ppu->background_pattern_table_data[0] |= ((uint16_t)higher_tile_byte) << 8;
+            if (ppu->dots == 256) {
+                y_increment(ppu);
+            } else{
+                coarse_X_increment(ppu);
+            }
+            break;
+        } 
+        default:
+            break;
+    }
+}
 /** tick the ppu by one ppu cycle, or by num_cycles? */
 void ppu_tick(struct nesppu *ppu, unsigned num_cycles) {
-    ppu->cycles += num_cycles;
+    ppu->cycles += 1;
     if (ppu->lines < 240) { // rendering
         /** TODO: handle not rendering behaviour correctly */
         // if (!(ppu->mask & PPUMASK_SHOW_BACKGROUND) && !(ppu->mask & PPUMASK_SHOW_SPRITES)) {
         //     idle_tick(ppu);
         //     return;
         // }
+        // TODO: render? 
         if (ppu->dots == 0) {
-            // render? 
             ppu->dots += 1;
         }
         else if (ppu->dots <= 256) {
-            unsigned dots_m_1 = ppu->dots - 1;
-            switch (dots_m_1 % 8) {
-                case 1: {
-                    // fetch nametable byte
-                    uint8_t nametable_byte = fetch_nametable_byte(ppu);
-                    break;
-                }
-                case 3: {
-                    // fetch attribute table byte
-                    uint8_t attribute_table_byte = fetch_attribute_byte(ppu);
-
-                    break;
-                }
-                    
-                case 5: 
-                    // fetch lower background tile byte
-                    break;
-                case 7: 
-                    // fetch higher background tile byte and increment the horizontal v
-                    
-                    break;
-                default:
-                    break;
-            }
+            render_memory_fetch(ppu);
             ppu->dots += 1;
         }
         else if (ppu->dots == 257) {
-
+            // hori(v) = hori(t)
+            ppu->v &= ~UINT16_C(0b0000010000011111);
+            ppu->v |= (ppu->t & 0b0000010000011111);
+            ppu->dots += 1;
         }
         else if (ppu->dots <= 320) {
-
+            ppu->dots += 1;
         }
         else {
-
+            render_memory_fetch(ppu);
+            if (ppu->dots == 340) {
+                ppu->dots = 0;
+                ppu->lines += 1;
+            } else {
+                ppu->dots += 1;
+            }
         }
     }
     else if (ppu->lines < 260) { // vblank + // post render
         idle_tick(ppu);
         // set the vblank on the second tick otherwise idle
-        if (ppu->lines == 241 && ppu->dots == 1) { ppu->nmi_raised = true; }
+        if (ppu->lines == 241 && ppu->dots == 1) { 
+            ppu->nmi_raised = true; 
+        }
     }
     else { // pre-render
-
+        if (ppu->dots == 1) {
+            // clear vblank, overflow, sprite zero
+            ppu->status &= ~(PPUSTATUS_VBLANK_STARTED | PPUSTATUS_SPRITE_OVERFLOW | PPUSTATUS_SPRITE_ZERO_HIT);
+            ppu->nmi_raised = false;
+            ppu->dots += 1;
+        }
+        else if (ppu->dots <= 256) {
+            render_memory_fetch(ppu);
+            ppu->dots += 1;
+        }
+        else if (ppu->dots == 257) {
+            ppu->v &= ~UINT16_C(0b0000010000011111);
+            ppu->v |= (ppu->t & 0b0000010000011111);
+            ppu->dots += 1;
+        }
+        else if (ppu->dots <= 279) {
+            ppu->dots += 1;
+        }
+        else if (ppu->dots <= 304) {
+            // vert(v) = vert(t) at each tick
+            ppu->v &= ~UINT16_C(0b0111101111100000);
+            ppu->v |= (ppu->t & 0b0111101111100000);
+            ppu->dots += 1;
+        }
+        else if (ppu->dots <= 320) {
+            ppu->dots += 1;
+        }
+        else {
+            render_memory_fetch(ppu);
+            if (ppu->dots == 340) {
+                ppu->dots = 0;
+                ppu->lines = 0;
+            } else {
+                ppu->dots += 1;
+            }
+        }
     }
 }
 
