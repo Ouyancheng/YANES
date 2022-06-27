@@ -6,11 +6,11 @@
  * (maybe) better not to inline it because we may want less branches to relief the branch predictor 
  */
 static void idle_tick(struct nesppu *ppu) {
-    if (ppu->dots <= 340) {
-        ppu->dots += 1;
-    } else {
+    if (ppu->dots == 340) {
         ppu->dots = 0;
         ppu->lines += 1;
+    } else {
+        ppu->dots += 1;
     }
 }
 static inline uint8_t fetch_nametable_byte(struct nesppu *ppu) {
@@ -210,6 +210,7 @@ void ppu_tick(struct nesppu *ppu, unsigned num_cycles) {
                     ppu->lines = 0;
                 }
                 ppu->frames += 1;
+                ppu->state = PPUSTATE_RENDER;
             } else {
                 ppu->dots += 1;
             }
