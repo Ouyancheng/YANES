@@ -167,7 +167,10 @@ void ppu_tick(struct nesppu *ppu, unsigned num_cycles) {
         }
     }
     else { // pre-render
-        if (ppu->dots == 1) {
+        if (ppu->dots == 0) {
+            ppu->dots = 1;
+        } 
+        else if (ppu->dots == 1) {
             // clear vblank, overflow, sprite zero
             ppu->status &= ~(PPUSTATUS_VBLANK_STARTED | PPUSTATUS_SPRITE_OVERFLOW | PPUSTATUS_SPRITE_ZERO_HIT);
             ppu->nmi_raised = false;
@@ -197,8 +200,16 @@ void ppu_tick(struct nesppu *ppu, unsigned num_cycles) {
         else {
             render_memory_fetch(ppu);
             if (ppu->dots == 340) {
-                ppu->dots = 0;
-                ppu->lines = 0;
+                if (ppu->frames % 2 == 1) { // odd frames
+                    // we are jumping from (339, 261) to (0, 0) but we are still accessing the nametable byte, 
+                    // so we implement this by skipping the (0, 0) to (1, 0) instead of skipping (340, 261). 
+                    ppu->dots = 1; 
+                    ppu->lines = 0;
+                } else {
+                    ppu->dots = 0;
+                    ppu->lines = 0;
+                }
+                ppu->frames += 1;
             } else {
                 ppu->dots += 1;
             }
