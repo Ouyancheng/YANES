@@ -23,9 +23,15 @@ void ppu_init(struct nesppu *ppu) {
     ppu->cycles = 0;
     ppu->dots = 0;
     ppu->lines = 0;
-    memset(ppu->palette_ram, 0, 32);
-    memset(ppu->oamdata, 0, 256); 
-    memset(ppu->vram, 0, 2048);
+    memset(ppu->background_pattern_table_data, 0, sizeof(ppu->background_pattern_table_data));
+    memset(ppu->background_palette_attributes, 0, sizeof(ppu->background_palette_attributes));
+    memset(ppu->sprite_attributes, 0, sizeof(ppu->sprite_attributes));
+    memset(ppu->sprite_pattern_table_data, 0, sizeof(ppu->sprite_pattern_table_data));
+    memset(ppu->sprite_x_counters, 0, sizeof(ppu->sprite_x_counters));
+    memset(ppu->secondary_oam, 0, sizeof(ppu->secondary_oam));
+    memset(ppu->palette_ram, 0, sizeof(ppu->palette_ram));
+    memset(ppu->oamdata, 0, sizeof(ppu->oamdata)); 
+    memset(ppu->vram, 0, sizeof(ppu->vram));
 }
 
 void ppu_reset(struct nesppu *ppu) {

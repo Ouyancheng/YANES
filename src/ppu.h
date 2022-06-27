@@ -86,7 +86,36 @@ struct nesppu {
      * xxx: fine x scroll -- similar to yyy
      * w: just to specify whether it's the first of the second write 
      */
-
+    /** 
+     * 2 16-bit shift registers - These contain the pattern table data for two tiles. 
+     * Every 8 cycles, the data for the next tile is loaded into the upper 8 bits of this shift register. 
+     * Meanwhile, the pixel to render is fetched from one of the lower 8 bits.
+     */
+    uint16_t background_pattern_table_data[2]; 
+    /**
+     * 2 8-bit shift registers - These contain the palette attributes for the lower 8 pixels of the 16-bit shift register. 
+     * These registers are fed by a latch which contains the palette attribute for the next tile. 
+     * Every 8 cycles, the latch is loaded with the palette attribute for the next tile.
+     */
+    uint8_t background_palette_attributes[2];
+    /**
+     * 8 pairs of 8-bit shift registers - 
+     * These contain the pattern table data for up to 8 sprites, to be rendered on the current scanline. 
+     * Unused sprites are loaded with an all-transparent set of values.
+     */
+    uint8_t sprite_pattern_table_data[8][2];
+    /**
+     * 8 latches - These contain the attribute bytes for up to 8 sprites.
+     */
+    uint8_t sprite_attributes[8];
+    /**
+     * 8 counters - These contain the X positions for up to 8 sprites.
+     */
+    uint8_t sprite_x_counters[8];
+    /**
+     * Secondary OAM (holds 8 sprites for the current scanline)
+     */
+    uint8_t secondary_oam[32];
 
     /** PPUCTRL 0x2000 */
     uint8_t ctrl;
@@ -124,7 +153,6 @@ struct nesppu {
     uint16_t dots;
     /** current line / y coordinate */
     uint16_t lines;
-
     uint8_t palette_ram[32];
     uint8_t oamdata[256];
     uint8_t vram[2048];
