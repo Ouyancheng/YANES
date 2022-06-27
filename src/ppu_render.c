@@ -154,6 +154,7 @@ void ppu_tick(struct nesppu *ppu, unsigned num_cycles) {
             if (ppu->dots == 340) {
                 ppu->dots = 0;
                 ppu->lines += 1;
+                ppu->state = PPUSTATE_POSTRENDER;
             } else {
                 ppu->dots += 1;
             }
@@ -164,6 +165,8 @@ void ppu_tick(struct nesppu *ppu, unsigned num_cycles) {
         // set the vblank on the second tick otherwise idle
         if (ppu->lines == 241 && ppu->dots == 1) { 
             ppu->nmi_raised = true; 
+        } else if (ppu->lines == 261) {
+            ppu->state = PPUSTATE_PRERENDER;
         }
     }
     else { // pre-render
