@@ -4,9 +4,9 @@
 #include "rom.h"
 
 enum nametable_mirror {
-    MIRROR_VERT, 
-    MIRROR_HORI, 
-    MIRROR_FOUR, 
+    MIRROR_VERT = 0, 
+    MIRROR_HORI = 1, 
+    MIRROR_FOUR = 2, 
 };
 
 enum ppu_registers {
@@ -58,10 +58,10 @@ enum ppu_status_flags {
 
 
 enum ppu_state {
-    PPUSTATE_RENDER,
-    PPUSTATE_POSTRENDER,
-    PPUSTATE_VBLANK,
-    PPUSTATE_PRERENDER,
+    PPUSTATE_RENDER = 0,
+    PPUSTATE_POSTRENDER = 1,
+    PPUSTATE_VBLANK = 2,
+    PPUSTATE_PRERENDER = 3,
 };
 struct nesppu {
     /** the current vram address (15 bits) */
@@ -91,17 +91,21 @@ struct nesppu {
      * Every 8 cycles, the data for the next tile is loaded into the upper 8 bits of this shift register. 
      * Meanwhile, the pixel to render is fetched from one of the lower 8 bits.
      */
-    uint16_t background_pattern_table_data[2]; 
+    uint32_t background_pattern_table_data; 
+    /**
+     * The tile that's currently rendering
+     */
+    uint16_t current_background_tile;
     /**
      * 2 8-bit shift registers - These contain the palette attributes for the lower 8 pixels of the 16-bit shift register. 
      * These registers are fed by a latch which contains the palette attribute for the next tile. 
      * Every 8 cycles, the latch is loaded with the palette attribute for the next tile.
      */
-    uint8_t background_palette_attributes[2];
+    uint16_t background_palette_attributes;
     /**
      * Two nametable bytes used for fetching the tile data
      */
-    uint8_t nametable_bytes[2];
+    uint16_t nametable_bytes;
     /**
      * 8 pairs of 8-bit shift registers - 
      * These contain the pattern table data for up to 8 sprites, to be rendered on the current scanline. 

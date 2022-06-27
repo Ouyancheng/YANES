@@ -3,35 +3,36 @@
 
 /** https://www.nesdev.org/wiki/PPU_power_up_state */
 void ppu_init(struct nesppu *ppu) {
-    ppu->v = 0;
-    ppu->t = 0;
-    ppu->x = 0;
-    ppu->w = 0;
-    ppu->ctrl = 0;
-    ppu->mask = 0;
+    memset(ppu, 0, sizeof(struct nesppu)); // quick and dirty :)
     ppu->status = 0b10100000;
-    ppu->oamaddr = 0;
-    ppu->data_read_buffer = 0;
     ppu_set_nametable_mirror(ppu, MIRROR_VERT);
-    ppu->rom = NULL;
-    ppu->CHR_reader = NULL;
-    ppu->CHR_writer = NULL;
-    ppu->iobus_last_value = 0;
-    ppu->nmi_raised = false;
-    ppu->state = PPUSTATE_RENDER;
-    ppu->frames = 0;
-    ppu->cycles = 0;
-    ppu->dots = 0;
-    ppu->lines = 0;
-    memset(ppu->background_pattern_table_data, 0, sizeof(ppu->background_pattern_table_data));
-    memset(ppu->background_palette_attributes, 0, sizeof(ppu->background_palette_attributes));
-    memset(ppu->sprite_attributes, 0, sizeof(ppu->sprite_attributes));
-    memset(ppu->sprite_pattern_table_data, 0, sizeof(ppu->sprite_pattern_table_data));
-    memset(ppu->sprite_x_counters, 0, sizeof(ppu->sprite_x_counters));
-    memset(ppu->secondary_oam, 0, sizeof(ppu->secondary_oam));
-    memset(ppu->palette_ram, 0, sizeof(ppu->palette_ram));
-    memset(ppu->oamdata, 0, sizeof(ppu->oamdata)); 
-    memset(ppu->vram, 0, sizeof(ppu->vram));
+    // ppu->v = 0;
+    // ppu->t = 0;
+    // ppu->x = 0;
+    // ppu->w = 0;
+    // ppu->ctrl = 0;
+    // ppu->mask = 0;
+    // ppu->oamaddr = 0;
+    // ppu->data_read_buffer = 0;
+    // ppu->rom = NULL;
+    // ppu->CHR_reader = NULL;
+    // ppu->CHR_writer = NULL;
+    // ppu->iobus_last_value = 0;
+    // ppu->nmi_raised = false;
+    // ppu->state = PPUSTATE_RENDER;
+    // ppu->frames = 0;
+    // ppu->cycles = 0;
+    // ppu->dots = 0;
+    // ppu->lines = 0;
+    // memset(ppu->background_pattern_table_data, 0, sizeof(ppu->background_pattern_table_data));
+    // memset(ppu->background_palette_attributes, 0, sizeof(ppu->background_palette_attributes));
+    // memset(ppu->sprite_attributes, 0, sizeof(ppu->sprite_attributes));
+    // memset(ppu->sprite_pattern_table_data, 0, sizeof(ppu->sprite_pattern_table_data));
+    // memset(ppu->sprite_x_counters, 0, sizeof(ppu->sprite_x_counters));
+    // memset(ppu->secondary_oam, 0, sizeof(ppu->secondary_oam));
+    // memset(ppu->palette_ram, 0, sizeof(ppu->palette_ram));
+    // memset(ppu->oamdata, 0, sizeof(ppu->oamdata)); 
+    // memset(ppu->vram, 0, sizeof(ppu->vram));
 }
 
 void ppu_reset(struct nesppu *ppu) {
