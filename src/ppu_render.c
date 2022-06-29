@@ -124,7 +124,7 @@ static void render_memory_fetch(struct nesppu *ppu) {
     }
 }
 /** tick the ppu by one ppu cycle, or by num_cycles? */
-void ppu_tick(struct nesppu *ppu, unsigned num_cycles) {
+void ppu_tick(struct nesppu *ppu) {
     ppu->cycles += 1;
     if (ppu->lines < 240) { // rendering
         /** TODO: handle not rendering behaviour correctly */

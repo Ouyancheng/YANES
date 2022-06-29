@@ -181,8 +181,8 @@ uint8_t ppu_internal_read8(struct nesppu *ppu, uint16_t addr);
 /** performs a write on PPU's external address space */
 void ppu_internal_write8(struct nesppu *ppu, uint16_t addr, uint8_t value); 
 
-/** Handle OAM DMA when writing to OAMDMA 0x4014, TODO: implement this */
+/** Handle OAM DMA when writing to OAMDMA 0x4014, TODO: fix this, especially the ppu cycles */
 void ppu_oam_dma(struct nesppu *ppu, struct nescpu *cpu, uint8_t page); 
-/** tick the PPU by the number of PPU cycles */
-void ppu_tick(struct nesppu *ppu, unsigned num_cycles);
+/** tick the PPU by one PPU cycle */
+void ppu_tick(struct nesppu *ppu);
 
