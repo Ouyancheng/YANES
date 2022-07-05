@@ -125,6 +125,7 @@ static void render_memory_fetch(struct nesppu *ppu) {
 }
 /** tick the ppu by one ppu cycle, or by num_cycles? */
 void ppu_tick(struct nesppu *ppu) {
+    /// TODO: how do we ensure that the v register is in sync with the drawing......?
     ppu->cycles += 1;
     if (ppu->lines < 240) { // rendering
         /** TODO: handle not rendering behaviour correctly */
